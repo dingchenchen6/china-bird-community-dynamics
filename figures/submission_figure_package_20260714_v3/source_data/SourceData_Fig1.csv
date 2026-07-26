@@ -1,0 +1,10 @@
+item,value,note
+occurrence_records,7489201,all events
+recorded_species,1426,integrated database
+breeding_season_records,3149635,breeding-season filter
+grid_cells,1247,100-km grid
+periods,5,2000-2024
+maximum_rhat_200sp,1.0392700158698471,4-chain diagnostic table
+minimum_ess_200sp,69.96061078306373,4-chain diagnostic table
+available_rhat_500sp,0,R-hat unavailable
+minimum_ess_500sp,118.40648794312293,4-chain metadata
