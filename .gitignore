@@ -24,3 +24,8 @@ tmp/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# push helper (local only)
+push_batches.sh
+.pushwork/
+push_figs.sh
