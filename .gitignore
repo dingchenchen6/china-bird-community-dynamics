@@ -1,0 +1,26 @@
+# Large data & model objects (regenerate via pipeline stage 04/05)
+data/
+*.rds
+*.RData
+.Rhistory
+.Rproj.user/
+
+# Posterior / intermediate objects
+psi_samples_*
+metric_arrays_*
+*_fit_*.rds
+
+# Logs & temporary
+logs*/
+tmp/
+*.log
+
+# Backups
+*.bak
+*.bak_*
+*~
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
