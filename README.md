@@ -23,6 +23,7 @@ Code, result tables, figures and manuscripts for a national-scale analysis of Ch
 | If you want to… | Read |
 |---|---|
 | Re-run the analysis | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) — environment, inputs, pipeline order, runtimes |
+| Run the mechanism & conservation analyses on a compute server | [`server_run/README_KIMI_SERVER_RUN.md`](server_run/README_KIMI_SERVER_RUN.md) — self-contained, one-command driver |
 | Understand the result tables | [`results/README.md`](results/README.md) — full data dictionary |
 | Understand the code | [`code/README.md`](code/README.md) — stage map and conventions |
 | Judge how solid the study is | [`reports/RESEARCH_SYSTEMATIC_AUDIT_20260602.md`](reports/RESEARCH_SYSTEMATIC_AUDIT_20260602.md) — end-to-end audit |
@@ -41,8 +42,21 @@ results/      result tables (CSV)               → results/README.md (data dict
 manuscripts/  manuscript drafts, cover letters, abstracts (Markdown + DOCX)
 reports/      methodological audits, simulated peer review, rerun guides
 figures/      current main-line figures (PNG/PDF)
+server_run/   one-command driver + self-contained server instructions
 REPRODUCIBILITY.md   how to reproduce, end to end
 ```
+
+### Mechanism and conservation analyses (scripts 30–32)
+
+Three analyses address why richness rose and what it means for conservation:
+
+| Script | Question | Key output |
+|---|---|---|
+| `30_range_expansion_mechanism.R` | Is rising richness range-edge expansion or in-range infilling? Climate-driven? | Range decomposition, centroid shifts, community temperature index, guild attribution |
+| `31_protected_area_effectiveness.R` | Do China's nature reserves slow functional homogenization? | Propensity-score-matched ATT, difference-in-differences, representation gaps |
+| `32_conservation_prioritization.R` | Does richness-led planning miss the areas that prevent homogenization? | Three prioritization scenarios, spatial mismatch, protected-area shortfall |
+
+Protected-area boundaries come from China Nature Reserve Specimen Resource Sharing Platform (2024), *List and Vector Boundaries of Nature Reserves in China*, Zenodo, https://doi.org/10.5281/zenodo.14875797 (CC-BY-4.0); the data are not redistributed here.
 
 ### Pipeline entry points (`code/code_v3/`)
 
