@@ -54,23 +54,36 @@ Rscript -e 'x <- readRDS("~/Documents/New project/bird_dynamic_occupancy_analysi
 
 ### 2.2 保护区数据（脚本 31、32 需要）
 
-需把本地这个目录整个上传到服务器同名位置：
-
-```
-data/external/protected_areas/
-├── china_nature_reserves.rar
-├── READ_ME.md
-└── 全国自然保护区名录+矢量边界/
-    ├── 保护区.shp / .shx / .dbf / .prj   ← 关键
-    └── 全国保护区数据.xlsx
-```
-
-从本地上传（在**本地**终端执行）：
+**数据已随本仓库分发**（CC-BY-4.0 允许再分发），无需另外下载。在服务器上：
 
 ```bash
-rsync -avz "$HOME/Documents/New project/bird_dynamic_occupancy_analysis/data/external/protected_areas/" \
-  dingchenchen@162.105.149.23:"~/Documents/New project/bird_dynamic_occupancy_analysis/data/external/protected_areas/"
+git clone https://github.com/dingchenchen6/china-bird-community-dynamics.git
+mkdir -p ~/Documents/New\ project/bird_dynamic_occupancy_analysis/data/external/protected_areas
+cp china-bird-community-dynamics/data/protected_areas/* \
+   ~/Documents/New\ project/bird_dynamic_occupancy_analysis/data/external/protected_areas/
 ```
+
+或用本地打包文件上传（本地终端执行）：
+
+```bash
+scp ~/Desktop/protected_areas_package.tar.gz dingchenchen@<SERVER_IP>:~/
+# 服务器上解压
+tar -xzf ~/protected_areas_package.tar.gz -C ~/Documents/New\ project/bird_dynamic_occupancy_analysis/data/external/
+```
+
+验证（应输出 1028 且中文正常）：
+
+```bash
+Rscript -e 'library(sf); g <- st_read("~/Documents/New project/bird_dynamic_occupancy_analysis/data/external/protected_areas/china_nature_reserves_utf8.gpkg", quiet=TRUE); cat(nrow(g), "个保护区\n"); print(head(g[["保护区名称"]], 3))'
+```
+
+> **⚠️ 编码陷阱**：原始 shapefile 是 **GBK** 编码。在 UTF-8 locale 的 Linux 服务器上直接
+> `st_read()` 会中文乱码，属性连接**静默失败**（不报错但结果错误）。因此务必使用
+> `china_nature_reserves_utf8.gpkg`。脚本 31 已内置：优先读 GeoPackage → 回退时显式
+> 声明 GBK → 检测到乱码字符即中止。
+
+> **⚠️ 覆盖度**：矢量边界仅 1028 条，而名录有 3376 条（约 30%），偏向国家级与大面积
+> 保护区。未覆盖的中小保护区会被当作"非保护区"，使成效估计偏保守。论文须声明。
 
 数据来源：China Nature Reserve Specimen Resource Sharing Platform (2024). *List and Vector Boundaries of Nature Reserves in China*. Zenodo. https://doi.org/10.5281/zenodo.14875797 （CC-BY-4.0）
 
