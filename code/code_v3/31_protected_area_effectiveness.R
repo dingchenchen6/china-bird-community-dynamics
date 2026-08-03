@@ -55,12 +55,28 @@ is_pilot  <- Sys.getenv("V3_PILOT", "0") == "1"
 run_label <- if (is_pilot) PILOT_LABEL else RUN_LABEL
 log_time("31", "Protected-area effectiveness and conservation gaps")
 
-PA_SHP <- file.path(DIRS$external, "protected_areas",
-                    "全国自然保护区名录+矢量边界", "保护区.shp")
-if (!file.exists(PA_SHP)) stop("[31] PA shapefile not found: ", PA_SHP)
+# 优先读 UTF-8 的 GeoPackage（跨平台安全）；缺失时回退到原始 shapefile。
+# 原始 shp 为 GBK 编码，若不显式声明，Linux(UTF-8 locale) 下中文字段会乱码，
+# 导致属性连接静默失败。Prefer UTF-8 GeoPackage; the source shapefile is GBK-encoded.
+PA_DIR <- file.path(DIRS$external, "protected_areas")
+PA_GPKG <- file.path(PA_DIR, "china_nature_reserves_utf8.gpkg")
+PA_SHP  <- file.path(PA_DIR, "全国自然保护区名录+矢量边界", "保护区.shp")
+if (!file.exists(PA_GPKG) && !file.exists(PA_SHP))
+  stop("[31] PA boundaries not found. Expected:\n  ", PA_GPKG, "\n  or ", PA_SHP)
 
 # ── 1. 网格 × 保护区覆盖率 ───────────────────────────────────────────
-pa <- st_read(PA_SHP, quiet = TRUE) |> st_make_valid()
+pa <- if (file.exists(PA_GPKG)) {
+  message("[31] reading PA boundaries from GeoPackage (UTF-8)")
+  st_read(PA_GPKG, quiet = TRUE)
+} else {
+  message("[31] reading PA boundaries from shapefile with explicit GBK encoding")
+  st_read(PA_SHP, quiet = TRUE, options = "ENCODING=GBK")
+}
+pa <- st_make_valid(pa)
+# 编码自检：保护区名称若出现替换字符则说明编码仍不对，宁可停下也不要静默出错
+nm_col <- intersect(c("保护区名称", "name"), names(pa))[1]
+if (!is.na(nm_col) && any(grepl("�", pa[[nm_col]]), na.rm = TRUE))
+  stop("[31] PA name field is mojibake — encoding is wrong; use the UTF-8 GeoPackage.")
 pa$year <- suppressWarnings(as.numeric(substr(as.character(pa$`始建时间`), 1, 4)))
 message(sprintf("[31] PAs: %d polygons; pre-2000 %d; 2000-2024 %d",
                 nrow(pa), sum(pa$year < 2000, na.rm = TRUE),
