@@ -1,5 +1,7 @@
 # Large data & model objects (regenerate via pipeline stage 04/05)
-data/
+data/*
+# Exception: redistributable protected-area boundaries (CC-BY-4.0, see README_PA_DATA.md)
+!data/protected_areas/
 *.rds
 *.RData
 .Rhistory
