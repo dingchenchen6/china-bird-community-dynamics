@@ -157,6 +157,26 @@ if (!requireNamespace("MatchIt", quietly = TRUE)) {
   m <- MatchIt::matchit(f, data = mdat, method = "nearest",
                         distance = "glm", caliper = 0.2, ratio = 1)
   print(summary(m)$sum.matched[, c("Means Treated", "Means Control", "Std. Mean Diff.")])
+
+  # 导出匹配前后的协变量平衡（|SMD|<0.1 视为平衡）。这是准实验设计的
+  # 必要证据：不给平衡表，审稿人无法判断 ATT 是否可信。
+  # Export covariate balance before/after matching; |SMD| < 0.1 = balanced.
+  sm <- summary(m)
+  bal <- data.frame(
+    variable  = rownames(sm$sum.all),
+    smd_before = sm$sum.all[, "Std. Mean Diff."],
+    smd_after  = sm$sum.matched[match(rownames(sm$sum.all),
+                                      rownames(sm$sum.matched)), "Std. Mean Diff."],
+    stringsAsFactors = FALSE)
+  bal$balanced_after <- abs(bal$smd_after) < 0.1
+  write_csv(bal, paste0(v3_file("results", paste0("table_pa_matching_balance_", run_label)), ".csv"))
+  message(sprintf("[31] 匹配平衡：%d/%d 个协变量在匹配后 |SMD|<0.1",
+                  sum(bal$balanced_after, na.rm = TRUE), nrow(bal)))
+  if (any(!bal$balanced_after, na.rm = TRUE))
+    message("[31] ⚠ 未平衡的协变量：",
+            paste(bal$variable[!bal$balanced_after & !is.na(bal$balanced_after)], collapse = ", "),
+            " —— ATT 解释需谨慎")
+
   md <- MatchIt::match.data(m)
 
   OUTCOMES <- grep("^trend_", names(md), value = TRUE)
