@@ -66,8 +66,10 @@ cov_path <- res_path("table_pa_grid_coverage")
 if (!file.exists(cov_path))
   stop("[33] 需要先运行 31_protected_area_effectiveness.R 生成 ", basename(cov_path))
 cov <- read_csv(cov_path, show_col_types = FALSE)
-frac_col <- intersect(c("pa_fraction", "pa_frac", "pa_cover"), names(cov))[1]
-if (is.na(frac_col)) stop("[33] 覆盖率表中未找到保护区面积占比列")
+frac_col <- intersect(c("pa_frac", "pa_frac_all", "pa_fraction", "pa_cover"), names(cov))[1]
+if (is.na(frac_col))
+  stop("[33] 覆盖率表中未找到保护区面积占比列（期望 pa_frac / pa_frac_all）。\n",
+       "     现有列：", paste(names(cov), collapse = ", "))
 cov <- cov |> rename(pa_frac = all_of(frac_col))
 cov$pa_stratum <- cut(cov$pa_frac, breaks = c(-Inf, PA_LOW, PA_HIGH, Inf),
                       labels = c("unprotected", "partial", "protected"))
@@ -206,8 +208,28 @@ write_csv(beta_tbl, res_path("table_pa_beta_contrast"))
 message("[33] >>> 若区外空间 beta 下降更快（同质化更快），保护区即起到了抑制趋同的作用。")
 
 # ── 5. 事件研究：以保护区设立年份为事件时间的动态 DiD ─────────────────
-yr_col <- intersect(c("pa_year_min", "establish_year", "years"), names(cov))[1]
+# 优先用 pa_year_first_major：仅计入实质覆盖(≥1%网格面积)的保护区，
+# 避免边角相交把处理时点错误提前。Prefer the "major overlap" year.
+#
+# ⚠️ 数据约束：保护区名录的设立年份仅覆盖至约 2011-2012。以 5 年期划分，
+#    只有处理时点落在 P2(2005-09)、P3(2010-14) 的网格才同时具备处理前期与
+#    处理后期，可用于平行趋势检验；P1 无前期，P4/P5 无处理发生。
+#    因此事件研究样本必然偏小，脚本会显式报告可用队列规模并在过小时给出警告。
+#    Establishment years end ~2012, so only the P2-P3 cohorts have both pre-
+#    and post-periods; the event study is inherently small-sample here.
+yr_col <- intersect(c("pa_year_first_major", "pa_year_min", "establish_year"), names(cov))[1]
 if (!is.na(yr_col) && requireNamespace("lme4", quietly = TRUE)) {
+  message("[33] 事件研究使用处理时点列：", yr_col)
+  yr_all <- cov[[yr_col]]
+  message(sprintf("[33] 处理时点分布：P1(2000-04) %d，P2(2005-09) %d，P3(2010-14) %d 个网格",
+                  sum(yr_all >= 2000 & yr_all <= 2004, na.rm = TRUE),
+                  sum(yr_all >= 2005 & yr_all <= 2009, na.rm = TRUE),
+                  sum(yr_all >= 2010 & yr_all <= 2014, na.rm = TRUE)))
+  n_usable <- sum(yr_all >= 2005 & yr_all <= 2014, na.rm = TRUE)
+  message(sprintf("[33] 可用于平行趋势检验的队列（P2-P3 处理）：%d 个网格", n_usable))
+  if (n_usable < 15)
+    message("[33] ⚠ 可用队列过小，事件研究仅作探索性参考，不应作为主要因果证据；\n",
+            "[33]   主因果设计请以脚本 31 的匹配 ATT，以及下方的保护年限梯度分析为准。")
   ev <- cm |>
     filter(metric %in% c("corrected_richness", "trait_volume", "rao_q")) |>
     inner_join(cov |> select(grid_cell, pa_frac, est_year = all_of(yr_col)), by = "grid_cell") |>
@@ -231,5 +253,59 @@ if (!is.na(yr_col) && requireNamespace("lme4", quietly = TRUE)) {
     message("[33] 事件研究系数已输出（事件前系数应接近 0 = 平行趋势假设成立）")
   }
 } else message("[33] 无保护区设立年份列或缺 lme4，跳过事件研究。")
+
+# ── 6. 保护年限梯度：更契合本数据的剂量-反应设计 ──────────────────────
+# 事件研究受限于设立年份只到 ~2012；但年份本身跨 1957-2012，含丰富变异。
+# 若保护确有成效，保护年限更长的网格应表现出更好的功能维度轨迹——
+# 这是一个剂量-反应关系，比二元处理更有说服力，且不依赖小样本队列。
+# Protection-age dose-response: longer-protected grids should show better
+# functional trajectories if protection works. Uses the full 1957-2012 range.
+if (!is.na(yr_col)) {
+  age_tbl <- cov |>
+    mutate(protect_age = ifelse(is.na(.data[[yr_col]]), NA_real_, 2024 - .data[[yr_col]]),
+           age_class = cut(protect_age,
+                           breaks = c(-Inf, 0, 15, 30, Inf),
+                           labels = c("unprotected", "young(<15a)",
+                                      "mid(15-30a)", "old(>30a)"))) |>
+    mutate(age_class = ifelse(pa_frac < PA_LOW, "unprotected", as.character(age_class))) |>
+    select(grid_cell, protect_age, age_class, pa_frac)
+
+  age_traj <- cm |>
+    inner_join(age_tbl, by = "grid_cell") |>
+    filter(!is.na(age_class)) |>
+    group_by(metric, period, age_class) |>
+    summarise(n_grid = n(), mean = mean(value_mean, na.rm = TRUE),
+              se = sd(value_mean, na.rm = TRUE) / sqrt(n()), .groups = "drop")
+  write_csv(age_traj, res_path("table_pa_age_trajectory"))
+
+  # 剂量-反应：功能维度趋势 ~ 保护年限（连续），控制基线环境
+  if (requireNamespace("lme4", quietly = TRUE)) {
+    dose <- do.call(rbind, lapply(
+      intersect(unique(cm$metric), c("trait_volume", "rao_q", "corrected_richness")),
+      function(m) {
+        d <- cm |> filter(metric == m) |>
+          inner_join(age_tbl, by = "grid_cell") |>
+          filter(!is.na(protect_age), protect_age > 0) |>
+          mutate(period_num = as.integer(sub("P", "", period)),
+                 z = as.numeric(scale(value_mean)),
+                 age_s = as.numeric(scale(protect_age)))
+        if (nrow(d) < 50) return(NULL)
+        fit <- try(lme4::lmer(z ~ period_num * age_s + (1 | grid_cell), data = d), silent = TRUE)
+        if (inherits(fit, "try-error")) return(NULL)
+        cf <- summary(fit)$coefficients
+        r <- cf["period_num:age_s", ]
+        data.frame(metric = m, dose_response_estimate = r[1], se = r[2], t = r[3],
+                   n_grid = length(unique(d$grid_cell)), stringsAsFactors = FALSE)
+      }))
+    if (!is.null(dose)) {
+      dose$p_approx <- 2 * pnorm(-abs(dose$t))
+      print(dose, digits = 3)
+      write_csv(dose, res_path("table_pa_age_dose_response"))
+      message("[33] >>> 功能指标的 dose_response_estimate 显著为正 = ")
+      message("[33]     保护年限越长，功能维度随时间的表现越好（剂量-反应证据）。")
+    }
+  }
+  message("[33] 保护年限梯度分析已输出（对本数据比事件研究更稳健）")
+}
 
 log_time("33", "DONE")

@@ -237,6 +237,32 @@ if (!is.null(genv) && !is.null(cov)) {
   }
 }
 
+# ── PA9. 保护年限梯度轨迹（剂量-反应）────────────────────────────────
+age <- read_if("table_pa_age_trajectory")
+if (!is.null(age)) {
+  focal <- intersect(unique(age$metric), c("corrected_richness", "trait_volume", "rao_q"))
+  AGE_COLS <- c("unprotected" = COL_OUT, "young(<15a)" = "#9AC3E0",
+                "mid(15-30a)" = COL_IN, "old(>30a)" = "#12395E")
+  d <- age |> filter(metric %in% focal, age_class %in% names(AGE_COLS)) |>
+    mutate(metric_lab = factor(lab_of(metric), levels = lab_of(focal)),
+           period_num = as.integer(sub("P", "", period)),
+           age_class = factor(age_class, levels = names(AGE_COLS)))
+  p9 <- ggplot(d, aes(period_num, mean, colour = age_class, fill = age_class)) +
+    geom_ribbon(aes(ymin = mean - se, ymax = mean + se), alpha = 0.15, colour = NA) +
+    geom_line(linewidth = 0.6) + geom_point(size = 1.3) +
+    facet_wrap(~ metric_lab, scales = "free_y", nrow = 1) +
+    scale_colour_manual(values = AGE_COLS, name = "保护年限") +
+    scale_fill_manual(values = AGE_COLS, name = "保护年限") +
+    scale_x_continuous(breaks = 1:5,
+      labels = c("2000-04", "2005-09", "2010-14", "2015-19", "2020-24")) +
+    labs(x = NULL, y = "后验均值（阴影为标准误）",
+         subtitle = "剂量-反应：若保护有效，保护年限越长的网格功能维度轨迹应越好") +
+    theme_nature_pub() +
+    theme(legend.position = "top", axis.text.x = element_text(angle = 45, hjust = 1))
+  save_nature(p9, paste0("fig_pa9_protection_age_", run_label), width_mm = 183, height_mm = 70)
+  message("[34] PA9 保护年限梯度图已输出")
+}
+
 # ── PA3. 匹配协变量平衡图（love plot）──────────────────────────────
 bal <- read_if("table_pa_matching_balance")
 if (!is.null(bal)) {
