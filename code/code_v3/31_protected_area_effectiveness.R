@@ -59,13 +59,19 @@ log_time("31", "Protected-area effectiveness and conservation gaps")
 # 原始 shp 为 GBK 编码，若不显式声明，Linux(UTF-8 locale) 下中文字段会乱码，
 # 导致属性连接静默失败。Prefer UTF-8 GeoPackage; the source shapefile is GBK-encoded.
 PA_DIR <- file.path(DIRS$external, "protected_areas")
+PA_RDS  <- file.path(PA_DIR, "china_nature_reserves_utf8.rds")
 PA_GPKG <- file.path(PA_DIR, "china_nature_reserves_utf8.gpkg")
 PA_SHP  <- file.path(PA_DIR, "全国自然保护区名录+矢量边界", "保护区.shp")
-if (!file.exists(PA_GPKG) && !file.exists(PA_SHP))
-  stop("[31] PA boundaries not found. Expected:\n  ", PA_GPKG, "\n  or ", PA_SHP)
+if (!file.exists(PA_RDS) && !file.exists(PA_GPKG) && !file.exists(PA_SHP))
+  stop("[31] PA boundaries not found. Expected:\n  ", PA_RDS, "\n  or ", PA_GPKG, "\n  or ", PA_SHP)
 
 # ── 1. 网格 × 保护区覆盖率 ───────────────────────────────────────────
-pa <- if (file.exists(PA_GPKG)) {
+# 服务器 GDAL 可能无 GPKG 驱动（2026-08-04 server23 实测缺失），
+# 故优先读预转换的 rds；gpkg/shp 作为回退。
+pa <- if (file.exists(PA_RDS)) {
+  message("[31] reading PA boundaries from pre-converted rds (UTF-8)")
+  readRDS(PA_RDS)
+} else if (file.exists(PA_GPKG)) {
   message("[31] reading PA boundaries from GeoPackage (UTF-8)")
   st_read(PA_GPKG, quiet = TRUE)
 } else {
@@ -180,10 +186,13 @@ if (sum(cov_tbl$newly_protected_2000_2024) < 20)
 genv <- safe_read(v3_file("derived", paste0("grid_environment", GRID_TAG, "_v3"), "rds"))
 if (is.null(genv)) genv <- safe_read(v3_file("derived", "grid_environment_v3", "rds"))
 
-trend <- read_csv(paste0(v3_file("results",
-          paste0("table_trend_summary_", run_label)), "_extended.csv"), show_col_types = FALSE)
+# 单一方法避免 pivot_wider 产出列表列（2026-08-04 修复：保留两种方法会让
+# 每个 grid_cell×metric 有两行，下游 t.test 报 is.atomic 错误）。
+# theil_sen 稳健，作为主选。
+trend <- read_csv(v3_file("results",
+          paste0("table_trend_summary_", run_label, "_extended")), show_col_types = FALSE)
 wide <- trend |>
-  filter(method %in% c("theil_sen", "ols")) |>
+  filter(method == "theil_sen") |>
   select(grid_cell, metric, mean) |>
   tidyr::pivot_wider(names_from = metric, values_from = mean, names_prefix = "trend_")
 
@@ -269,8 +278,8 @@ if (!requireNamespace("MatchIt", quietly = TRUE)) {
 
 # ── 5. 双重差分：2000-2024 年新建保护区 ──────────────────────────────
 # 处理组 = 研究期内新建且期前无保护；结果 = 各期校正物种数/功能体积
-div <- read_csv(paste0(v3_file("results",
-        paste0("table_diversity_summary_", run_label)), "_extended.csv"), show_col_types = FALSE)
+div <- read_csv(v3_file("results",
+        paste0("table_diversity_summary_", run_label, "_extended")), show_col_types = FALSE)
 did_dat <- div |>
   filter(metric %in% c("corrected_richness", "fric_prob", "rao_q")) |>
   select(grid_cell, period, metric, value = mean) |>
@@ -310,7 +319,7 @@ if (!is.null(psi_obj) && length(dim(psi_obj$psi_samples_thinned)) >= 4) {
                   sum(rep_tbl$meets_30pct), nrow(rep_tbl)))
 
   # 功能独特性空缺：功能越独特的物种是否保护越不足？
-  tr_path <- paste0(v3_file("results", paste0("table_species_trend_traits_", run_label)), "_extended.csv")
+  tr_path <- v3_file("results", paste0("table_species_trend_traits_", run_label, "_extended"))
   if (file.exists(tr_path)) {
     tr <- read_csv(tr_path, show_col_types = FALSE)
     if ("habitat_breadth" %in% names(tr)) {

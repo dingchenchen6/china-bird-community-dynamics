@@ -70,7 +70,7 @@ pa_frac <- if (file.exists(cov_path)) {
 
 # ── 2. 特征权重：物种数导向 vs 功能独特性导向 ───────────────────────
 # 功能独特性 = 该物种在性状空间中到其它物种的平均距离（越大越独特）
-tr_path <- paste0(v3_file("results", paste0("table_species_trend_traits_", run_label)), "_extended.csv")
+tr_path <- v3_file("results", paste0("table_species_trend_traits_", run_label, "_extended"))
 w_rich <- rep(1, ns)                                          # (A) 等权 = 物种数导向
 w_func <- rep(1, ns)
 if (file.exists(tr_path)) {
@@ -88,7 +88,7 @@ if (file.exists(tr_path)) {
 }
 
 # (C) 同质化风险导向：功能体积下降越快的网格，保护价值越高
-trend_path <- paste0(v3_file("results", paste0("table_trend_summary_", run_label)), "_extended.csv")
+trend_path <- v3_file("results", paste0("table_trend_summary_", run_label, "_extended"))
 risk <- rep(1, ng)
 if (file.exists(trend_path)) {
   tt <- read_csv(trend_path, show_col_types = FALSE) |>
@@ -110,9 +110,15 @@ library(prioritizr)
 solve_plan <- function(feature_mat, budget_frac, label) {
   pu <- data.frame(id = seq_len(ng), cost = 1, locked_in = FALSE)
   n_sel <- floor(budget_frac * ng)
+  # prioritizr v8 的 data.frame 接口要求 rij 为长表（pu/species/amount），
+  # 不再是 rij_matrix 矩阵（2026-08-04 实测 8.1.0 的方法签名）。
+  rij_df <- data.frame(
+    pu      = rep(seq_len(ncol(feature_mat)), each = nrow(feature_mat)),
+    species = rep(seq_len(nrow(feature_mat)), times = ncol(feature_mat)),
+    amount  = as.vector(feature_mat))
   p <- problem(pu, features = data.frame(id = seq_len(nrow(feature_mat)),
                                          name = rownames(feature_mat)),
-               rij_matrix = feature_mat, cost_column = "cost") |>
+               rij = rij_df, cost_column = "cost") |>
     add_max_utility_objective(budget = n_sel) |>
     add_binary_decisions() |>
     add_default_solver(gap = 0.05, verbose = FALSE)

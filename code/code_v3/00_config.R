@@ -25,6 +25,7 @@ CODE_ROOT <- normalizePath(CODE_ROOT, mustWork = FALSE)
 DIRS <- list(
   code         = CODE_ROOT,
   data_raw     = file.path(PROJECT_ROOT, "data"),
+  external     = file.path(PROJECT_ROOT, "data", "external"),
   derived      = file.path(OUTPUT_ROOT, "data", "derived_v3"),
   results      = file.path(OUTPUT_ROOT, "results_v3"),
   figures      = file.path(OUTPUT_ROOT, "figures_v3"),

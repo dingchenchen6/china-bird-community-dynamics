@@ -77,8 +77,9 @@ message(sprintf("[33] 保护分层: %s",
         paste(names(table(cov$pa_stratum)), table(cov$pa_stratum), sep = "=", collapse = ", ")))
 
 # ── 1. 多维多样性的逐期轨迹 × 保护分层 ───────────────────────────────
-cm_path <- paste0(v3_file("results", paste0("table_community_metrics_with_cri_", run_ext)), ".csv")
-if (!file.exists(cm_path)) cm_path <- res_path("table_community_metrics_with_cri")
+cm_path <- v3_file("results", paste0("table_community_metrics_with_cri_", run_ext))
+if (!file.exists(cm_path))
+  cm_path <- v3_file("results", paste0("table_community_metrics_with_cri_", run_label))
 cm <- read_csv(cm_path, show_col_types = FALSE)
 
 traj <- cm |>
@@ -153,8 +154,9 @@ sp_occ <- do.call(rbind, lapply(seq_len(np), function(t) {
 sp_occ$psi_diff <- sp_occ$mean_psi_inside - sp_occ$mean_psi_outside
 
 # 关联性状：栖息地宽度（低=特化种）
-tr_path <- paste0(v3_file("results", paste0("table_species_trend_traits_", run_ext)), ".csv")
-if (!file.exists(tr_path)) tr_path <- res_path("table_species_trend_traits")
+tr_path <- v3_file("results", paste0("table_species_trend_traits_", run_ext))
+if (!file.exists(tr_path))
+  tr_path <- v3_file("results", paste0("table_species_trend_traits_", run_label))
 if (file.exists(tr_path)) {
   tr <- read_csv(tr_path, show_col_types = FALSE)
   hb <- intersect(c("habitat_breadth", "Habitat.Breadth"), names(tr))[1]

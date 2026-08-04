@@ -217,8 +217,11 @@ if (!is.null(genv) && !is.null(cov)) {
   # PA8：保护规划三方案对比（脚本 32 产出）
   sol <- read_if("table_priority_solutions")
   if (!is.null(sol)) {
-    sc_cols <- setdiff(names(sol), "grid_cell")
-    d <- sol |> pivot_longer(all_of(sc_cols), names_to = "scenario", values_to = "selected") |>
+    # 32 产出为长表（grid_cell/selected/plan/budget）；主图取 GBF 30% 档，
+    # 0.17 档见 table_priority_solutions_*.csv（2026-08-04 适配修复）。
+    d <- sol |>
+      filter(budget == max(budget, na.rm = TRUE)) |>
+      mutate(scenario = plan) |>
       filter(!is.na(selected)) |>
       left_join(gmap |> select(grid_cell, lon, lat), by = "grid_cell") |>
       mutate(selected = factor(ifelse(selected > 0, "选中", "未选中"),
@@ -230,7 +233,7 @@ if (!is.null(genv) && !is.null(cov)) {
                         na.value = "grey92", name = NULL) +
       coord_sf(xlim = c(73, 135), ylim = c(18, 54), expand = FALSE) +
       labs(x = NULL, y = NULL,
-           subtitle = "三套优先区方案；若空间重叠低，说明按物种数规划会错过阻止同质化的关键区") +
+           subtitle = "三套优先区方案（预算=GBF 30% 目标）；若空间重叠低，说明按物种数规划会错过阻止同质化的关键区") +
       theme_nature_map() + theme(legend.position = "top")
     save_nature(p8, paste0("fig_pa8_prioritization_", run_label), width_mm = 183, height_mm = 84)
     message("[34] PA8 保护规划方案图已输出")
