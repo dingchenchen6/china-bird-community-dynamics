@@ -175,6 +175,35 @@ bash run_mechanism_and_conservation.sh
 | `table_priority_overlap_*.csv` | **最重要**：方案间 Jaccard 重叠度。**重叠度低 = 只按物种数规划会系统性错过阻止同质化的关键区域** |
 | `table_priority_pa_shortfall_*.csv` | 现有保护区对优先区的达成率；`n_priority_unprotected` = 扩建首选目标网格 |
 
+### 脚本 33：保护地内外的时空对比
+
+脚本 31 比较的是"端点趋势"的处理效应；脚本 33 比较**逐期轨迹**，并把对比推进到物种占域与空间同质化速率。
+
+| 输出表 | 关键判读 |
+|---|---|
+| `table_pa_trajectory_*.csv` | 保护地内/部分/外三层的多维多样性逐期轨迹。看末列 `protected_minus_unprotected`：功能指标为正 = **保护区延缓了功能衰退** |
+| `table_pa_interaction_tests_*.csv` | period × 保护覆盖率交互项。**显著为正 = 轨迹真的分化**（非仅基线差异） |
+| `table_pa_species_occupancy_*.csv` | 物种占域内外差值。**若特化种差值随时间扩大而泛化种不变 = 保护区选择性维持特化种** |
+| `table_pa_beta_contrast_*.csv` | 空间 beta 内外对比（等样本量重抽样）。**区外下降更快 = 保护区抑制了群落趋同** |
+| `table_pa_event_study_*.csv` | 动态双重差分。**设立前系数≈0 = 平行趋势成立**，设立后偏离即保护效应 |
+
+### 脚本 34：顶刊级图件
+
+输出到 `figures_v3/`，PDF（矢量投稿）+ PNG（预览）双份，Nature 尺寸：
+
+| 图 | 内容 |
+|---|---|
+| `fig_pa1_coverage_map_*` | 保护区覆盖率地图（缺值显式灰色） |
+| `fig_pa2_trajectories_*` | **核心图**：四个维度的内外逐期轨迹 |
+| `fig_pa3_balance_love_*` | 匹配协变量平衡图（|SMD|<0.1 阈值线）——**准实验必备，审稿人必查** |
+| `fig_pa4_att_forest_*` | 各维度处理效应森林图 |
+| `fig_pa5_spatial_beta_*` | 同质化速率内外对比 |
+| `fig_pa6_specialist_generalist_*` | 特化种 vs 泛化种占域分化 |
+| `fig_pa7_event_study_*` | 事件研究图（平行趋势检验） |
+| `fig_pa8_prioritization_*` | 三套保护规划方案对比地图 |
+
+出图硬规则（已内置）：统一 bbox `xlim=c(73,135), ylim=c(18,54)`、不画十段线、无鹰眼图、缺值格点显式灰色、色盲友好配色。
+
 ---
 
 ## 6. 跑完之后

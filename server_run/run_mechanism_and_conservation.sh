@@ -56,7 +56,8 @@ else echo "  ⚠ 未找到保护区矢量，脚本 31/32 会失败；请同步 d
 
 echo "  · 检查 R 包 ..."
 Rscript -e '
-pk <- c("sf","dplyr","readr","matrixStats","MatchIt","prioritizr","highs","tidyr")
+pk <- c("sf","dplyr","readr","matrixStats","MatchIt","prioritizr","highs","tidyr",
+        "lme4","ggplot2","patchwork","scico")
 miss <- pk[!sapply(pk, requireNamespace, quietly = TRUE)]
 if (length(miss)) {
   cat("  ⚠ 缺少 R 包:", paste(miss, collapse=", "), "\n")
@@ -68,8 +69,11 @@ declare -A SCRIPTS=(
   [30]="30_range_expansion_mechanism.R|物种数增长的机制归因（扩张vs填充、重心位移、CTI、类群归因）"
   [31]="31_protected_area_effectiveness.R|保护成效（匹配ATT+双重差分）与保护空缺"
   [32]="32_conservation_prioritization.R|系统保护规划（三方案对比与扩建缺口）"
+  [33]="33_pa_spatiotemporal_contrast.R|保护地内外时空对比（轨迹、物种占域、空间beta、事件研究）"
+  [34]="34_pa_publication_figures.R|顶刊级图件（轨迹/森林图/平衡图/事件研究/规划地图）"
 )
-TARGETS=("$@"); [ ${#TARGETS[@]} -eq 0 ] && TARGETS=(30 31 32)
+# 顺序有依赖：31 产出覆盖率表供 33 用；33 与 32 的结果供 34 绘图
+TARGETS=("$@"); [ ${#TARGETS[@]} -eq 0 ] && TARGETS=(30 31 32 33 34)
 
 FAILED=()
 for id in "${TARGETS[@]}"; do
