@@ -118,8 +118,9 @@ genv <- safe_read(v3_file("derived", paste0("grid_environment", GRID_TAG, "_v3")
 if (is.null(genv)) genv <- safe_read(v3_file("derived", "grid_environment_v3", "rds"))
 if (is.null(genv)) stop("[30] grid_environment not found.")
 idx <- match(sites, genv$grid_cell)
-lat <- genv$lat[idx]; lon <- genv$lon[idx]
-elev <- if ("elevation_mean" %in% names(genv)) genv$elevation_mean[idx] else genv$elevation[idx]
+lat <- if ("lat" %in% names(genv)) genv$lat[idx] else genv$centroid_lat[idx]
+lon <- if ("lon" %in% names(genv)) genv$lon[idx] else genv$centroid_lon[idx]
+elev <- if ("elevation_mean" %in% names(genv)) genv$elevation_mean[idx] else if ("elevation" %in% names(genv)) genv$elevation[idx] else genv$elev_mean[idx]
 bio1 <- if ("bio1" %in% names(genv)) genv$bio1[idx] else genv$BIO1[idx]
 
 wmean <- function(w, x) sum(w * x, na.rm = TRUE) / sum(w[!is.na(x)], na.rm = TRUE)

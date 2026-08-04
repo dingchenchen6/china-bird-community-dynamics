@@ -1,0 +1,7 @@
+budget,plan_1,plan_2,jaccard,n_only_1,n_only_2
+0.3,A_richness_led,B_functional_distinctiveness,0.9581151832460733,8,8
+0.3,A_richness_led,C_homogenization_risk,0.6475770925110133,80,80
+0.3,B_functional_distinctiveness,C_homogenization_risk,0.6403508771929824,82,82
+0.17,A_richness_led,B_functional_distinctiveness,0.9269406392694064,8,8
+0.17,A_richness_led,C_homogenization_risk,0.49645390070921985,71,71
+0.17,B_functional_distinctiveness,C_homogenization_risk,0.4911660777385159,72,72

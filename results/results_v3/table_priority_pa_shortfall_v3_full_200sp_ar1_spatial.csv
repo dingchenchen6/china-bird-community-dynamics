@@ -1,0 +1,4 @@
+plan,n_priority_grids,mean_existing_pa_cover,n_priority_wellprotected,pct_priority_wellprotected,n_priority_unprotected
+A_richness_led,374,0.03031826471480967,5,1.3368983957219251,310
+B_functional_distinctiveness,374,0.030918124671297592,5,1.3368983957219251,308
+C_homogenization_risk,374,0.02706633193009525,4,1.06951871657754,315
