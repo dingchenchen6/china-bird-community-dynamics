@@ -116,7 +116,23 @@ Species-level occupancy trends were estimated from posterior occupancy trajector
 
 Because the central alternative explanation for our results is that growing effort — not range change — produced the occupancy increase, we treat it as a hypothesis to be tested rather than assumed away, using four independent controls (Supporting Information S7): (i) the posterior slope of detection probability on survey effort, establishing whether effort growth is absorbed at the observation level; (ii) re-estimation of trends restricted to grid cells where effort saturated before 2010 and no longer increased; (iii) a fixed-effort counterfactual quantifying how much of the change in detection probability is attributable to effort growth alone; and (iv) comparison of models with and without the data-source detection term.
 
-### 2.10 | Software, reproducibility and data availability
+### 2.10 | Protected-area contrast, effectiveness and prioritization
+
+Because homogenization is a conservation problem, we asked whether China's reserve network slows it, and whether planning based on richness would target the right places. Reserve boundaries and attributes came from the national nature-reserve inventory (China Nature Reserve Specimen Resource Sharing Platform, 2024); we computed, for every grid cell, the areal fraction covered by reserves in an equal-area projection, together with the earliest establishment year of any intersecting reserve and a "major-overlap" variant restricted to reserves contributing at least 1% of grid area.
+
+**A three-tier causal hierarchy.** Protected areas are not sited at random — they are systematically placed high, far and on land of low opportunity cost (Joppa & Pfaff, 2009), so naive inside–outside comparisons confound protection with location. Global assessments that address this confound find protection effects that are real but heterogeneous and often modest (Watson et al., 2014; Geldmann et al., 2019), which sets a realistic expectation for what we should detect here. We therefore report three designs of decreasing inferential strength and state explicitly which claims each supports.
+
+*Tier 1 — matched treatment effects (primary).* Following the quasi-experimental standard for protected-area impact evaluation (Andam et al., 2008; Ferraro & Hanauer, 2014), we matched protected grids to unprotected grids on baseline covariates (elevation and its heterogeneity, baseline climate, land cover, baseline human footprint, habitat diversity) using propensity-score nearest-neighbour matching with a 0.2 caliper, then estimated average treatment effects on the treated for each diversity trend. We report standardized mean differences for every covariate before and after matching; effects are interpreted only where post-matching |SMD| < 0.1.
+
+*Tier 2 — protection-age dose-response (corroborating).* If protection is effective, grids protected for longer should show more favourable functional trajectories. We modelled each diversity metric as a function of period × protection age with grid random effects, using the full 1957–2012 range of establishment years. A dose-response relationship is harder to generate by siting bias alone than a binary contrast, because siting bias would have to covary with reserve age in the same direction.
+
+*Tier 3 — event-study dynamic difference-in-differences (exploratory).* For grids first substantially protected during the study window, we estimated period-specific effects relative to establishment, which permits a direct test of parallel pre-trends. As detailed in §4.8, the inventory's establishment years end around 2012, leaving only the 2005–2014 cohorts with both pre- and post-treatment periods; this design is therefore small-sample and we treat it as exploratory support for the parallel-trends assumption rather than as independent causal evidence.
+
+**Spatiotemporal contrast.** Beyond endpoint effects, we compared period-by-period trajectories inside and outside reserves for taxonomic, functional and phylogenetic metrics, tested period × protection interactions, and extended the contrast to two levels that endpoint summaries cannot reach: species-level occupancy, split by habitat breadth into specialists and generalists, and the rate of spatial homogenization, computed as mean among-grid Sørensen dissimilarity within each period on equal-sized random subsets of protected and unprotected grids to remove any effect of differing sample sizes.
+
+**Systematic conservation prioritization.** Using integer-programming prioritization (Margules & Pressey, 2000; Hanson et al., 2024), we solved three planning problems under a common area budget: maximizing detection-corrected richness, maximizing functional distinctiveness, and minimizing homogenization risk. Comparing the spatial overlap of the three solutions tests whether richness-led planning — still the default in most area-based targets (Rodrigues et al., 2004; Butchart et al., 2015; Maxwell et al., 2020) — would select the areas that matter for preventing functional homogenization, in the spirit of multi-facet prioritization (Pollock et al., 2017; Brum et al., 2017; Jung et al., 2021). We also quantified the shortfall between current reserve coverage and each solution.
+
+### 2.11 | Software, reproducibility and data availability
 
 Analyses used R with `spOccupancy`, `brms`, `cmdstanr`, `sf`, `terra`, `vegan`, `ape` and `ggplot2`. Code, derived result tables and figures are archived openly, with a locked `sessionInfo`, code hash and data manifest, and a full data dictionary linking every reported number to its source table.
 
@@ -161,6 +177,18 @@ Two structural features of the results are additionally difficult to reconcile w
 ### 3.7 | H5b: detection correction changes ecological inference
 
 Naive and corrected trends were directionally similar in most grids but differed substantially in magnitude. Correction reversed the sign of the trend in 37 of 1,247 grids (3.0%) in the 200-species model and 25 grids (2.0%) in the 500-species model; median absolute trend differences were 6.0 and 8.7 corrected species per period respectively. Detection correction therefore does not merely rescale raw richness — it alters the magnitude of inferred change widely and reverses interpretation in a small but conservation-relevant set of locations. These disagreement grids are, by construction, the places where uncorrected citizen-science data would most mislead monitoring.
+
+---
+
+### 3.8 | Protection, homogenization and the geography of conservation priority
+
+*This section reports analyses that are complete in design and code but awaiting the compute run; every quantity is flagged and none is inferred.*
+
+Reserve coverage is highly uneven across the grid `[PENDING: mean and distribution of grid protected fraction]`. Comparing period-by-period trajectories inside and outside reserves, taxonomic and functional metrics diverged as follows `[PENDING: protected-minus-unprotected change for corrected richness, trait volume and Rao's Q]`, with period × protection interactions `[PENDING: interaction estimates and significance]`. Matched treatment effects, estimated only where post-matching covariate balance was achieved `[PENDING: number of covariates with |SMD| < 0.1]`, were `[PENDING: ATT and 95% CI per diversity trend]`. The protection-age dose-response relationship, which uses the full range of establishment years, gave `[PENDING: period × protection-age interaction for functional metrics]`, and the exploratory event study yielded `[PENDING: pre-treatment coefficients as a parallel-trends check, with cohort sizes]`.
+
+Two contrasts bear most directly on the paper's central claim. At the species level, the occupancy gap between protected and unprotected grids for habitat specialists versus generalists was `[PENDING: mean psi difference by species group and period]` — a widening specialist gap would indicate that reserves selectively retain the species that homogenization removes. At the community level, the rate of spatial homogenization, measured as among-grid dissimilarity on equal-sized subsets, changed inside versus outside reserves by `[PENDING: spatial beta trajectories and inside-outside gap]`; a slower decline inside reserves would show that protection retards compositional convergence itself, not merely species loss.
+
+Finally, prioritization solutions optimized for corrected richness, for functional distinctiveness, and against homogenization risk overlapped by `[PENDING: pairwise Jaccard overlap]`, and current reserves covered `[PENDING: fraction of each solution already protected; number of unprotected priority grids]`. Low overlap would carry a direct planning implication: selecting areas by species richness — the currency of most area-based targets — would systematically miss the places where functional homogenization can still be prevented.
 
 ---
 
@@ -210,6 +238,8 @@ For conservation practice, three priorities follow. First, the grids where naive
 
 Several constraints bound these conclusions. The 500-species model is temporal and non-spatial: it supports generality, not spatial mechanism, and all spatial inference rests on the 200-species model. Trait and environmental mechanism analyses are complete-case (n = 200 species) and should not be extrapolated to the full 500-species pool. The five-year relaxed-closure design is an approximation, justified by sensitivity analysis but not eliminated by it. Convergence, while satisfactory by R̂, included three community-level variance hyperparameters with effective sample sizes below 100, which we report rather than conceal. Environmental associations are observational and spatially structured, and we avoid causal language accordingly. Finally, three analyses — spatial beta-diversity trend, functional-slope posterior probabilities, and the source-term model comparison — are on the compute queue and flagged at the exact sentences where their values belong.
 
+The protected-area analyses carry two further constraints that we state explicitly because they bound what can be claimed causally. First, **spatial coverage**: vector boundaries are available for 1,028 of the 3,376 reserves in the national inventory, and the covered subset is skewed toward national-level and large reserves. Smaller reserves without boundaries are therefore treated as unprotected, which biases estimated protection effects toward zero; our effect estimates should be read as conservative, and as applying to the large, higher-designation portion of the network rather than to area-based conservation in China as a whole. Second, **temporal coverage**: establishment years in the inventory end around 2012. With five-year periods, only cohorts first protected during 2005–2014 have both pre- and post-treatment periods, so the event-study design rests on a small number of grids. We accordingly place primary weight on the matched treatment effects and on the protection-age dose-response relationship, and present the event study only as an exploratory check on parallel pre-trends. None of the three designs can exclude unobserved confounders that covary with both siting and subsequent community change; we therefore describe protection results as differences associated with protection, reserving stronger language for cases where the matched, dose-response and event-study designs agree.
+
 ### 4.9 | Conclusion
 
 Detection correction did not erase the national richness increase, and we do not claim that Chinese bird communities are collapsing. We claim something more specific and, for the citizen-science era, more general: gains in observed and corrected richness can coincide with stagnant or declining functional space and rising nestedness. Biodiversity inference from volunteer data must therefore model detectability *and then look beyond richness* before change is called recovery. More species is not the same as more biodiversity — and in China's birds over the past quarter-century, the difference between the two is where the ecology is.
@@ -256,6 +286,8 @@ Analysis code, derived result tables and figures are openly archived at https://
 
 Altwegg, R., & Nichols, J. D. (2019). Occupancy models for citizen-science data. *Methods in Ecology and Evolution*, 10, 8–21. https://doi.org/10.1111/2041-210X.13090
 
+Andam, K. S., Ferraro, P. J., Pfaff, A., Sanchez-Azofeifa, G. A., & Robalino, J. A. (2008). Measuring the effectiveness of protected area networks in reducing deforestation. *Proceedings of the National Academy of Sciences USA*, 105, 16089–16094. https://doi.org/10.1073/pnas.0800437105
+
 Antão, L. H., Bates, A. E., Blowes, S. A., Waldock, C., Supp, S. R., Magurran, A. E., et al. (2020). Temperature-related biodiversity change across temperate marine and terrestrial systems. *Nature Ecology & Evolution*, 4, 927–933. https://doi.org/10.1038/s41559-020-1185-7
 
 Baiser, B., Olden, J. D., Record, S., Lockwood, J. L., & McKinney, M. L. (2012). Pattern and process of biotic homogenization in the New Pangaea. *Proceedings of the Royal Society B*, 279, 4772–4777. https://doi.org/10.1098/rspb.2012.1651
@@ -276,7 +308,11 @@ Bowler, D. E., Hof, C., Haase, P., Kröncke, I., Schweiger, O., Adrian, R., et a
 
 Breiman, L. (2001). Random forests. *Machine Learning*, 45, 5–32. https://doi.org/10.1023/A:1010933404324
 
+Brum, F. T., Graham, C. H., Costa, G. C., Hedges, S. B., Penone, C., Radeloff, V. C., et al. (2017). Global priorities for conservation across multiple dimensions of mammalian diversity. *Proceedings of the National Academy of Sciences USA*, 114, 7641–7646. https://doi.org/10.1073/pnas.1706461114
+
 Bryan, B. A., Gao, L., Ye, Y., Sun, X., Connor, J. D., Crossman, N. D., et al. (2018). China's response to a national land-system sustainability emergency. *Nature*, 559, 193–204. https://doi.org/10.1038/s41586-018-0280-2
+
+Butchart, S. H. M., Clarke, M., Smith, R. J., Sykes, R. E., Scharlemann, J. P. W., Harfoot, M., et al. (2015). Shortfalls and solutions for meeting national and global conservation area targets. *Conservation Letters*, 8, 329–337. https://doi.org/10.1111/conl.12158
 
 Cadotte, M. W., Carscadden, K., & Mirotchnick, N. (2011). Beyond species: functional diversity and the maintenance of ecological processes and services. *Journal of Applied Ecology*, 48, 1079–1087. https://doi.org/10.1111/j.1365-2664.2011.02048.x
 
@@ -298,8 +334,6 @@ Devictor, V., Julliard, R., Clavel, J., Jiguet, F., Lee, A., & Couvet, D. (2007)
 
 Devictor, V., van Swaay, C., Brereton, T., Brotons, L., Chamberlain, D., Heliölä, J., et al. (2012). Differences in the climatic debts of birds and butterflies at a continental scale. *Nature Climate Change*, 2, 121–124. https://doi.org/10.1038/nclimate1347
 
-Díaz, S., Settele, J., Brondízio, E. S., Ngo, H. T., Agard, J., Arneth, A., et al. (2019). Pervasive human-driven decline of life on Earth points to the need for transformative change. *Science*, 366, eaax3100. https://doi.org/10.1126/science.aax3100
-
 Ding, C., Liang, D., Xin, W., Li, C., Lloyd, H., Zhang, Y., et al. (2015). Bird guild loss and its determinants on subtropical land-bridge islands, China. *Avian Research*, 6, 10. https://doi.org/10.1186/s40657-015-0019-9
 
 Dorazio, R. M., & Royle, J. A. (2005). Estimating size and composition of biological communities by modeling the occurrence of species. *Journal of the American Statistical Association*, 100, 389–398. https://doi.org/10.1198/016214505000000015
@@ -308,11 +342,19 @@ Dornelas, M., Gotelli, N. J., McGill, B., Shimadzu, H., Moyes, F., Sievers, C., 
 
 Doser, J. W., Finley, A. O., Kéry, M., & Zipkin, E. F. (2022). spOccupancy: An R package for single-species, multi-species, and integrated spatial occupancy models. *Methods in Ecology and Evolution*, 13, 1670–1678. https://doi.org/10.1111/2041-210X.13897
 
+Díaz, S., Settele, J., Brondízio, E. S., Ngo, H. T., Agard, J., Arneth, A., et al. (2019). Pervasive human-driven decline of life on Earth points to the need for transformative change. *Science*, 366, eaax3100. https://doi.org/10.1126/science.aax3100
+
 Faith, D. P. (1992). Conservation evaluation and phylogenetic diversity. *Biological Conservation*, 61, 1–10. https://doi.org/10.1016/0006-3207(92)91201-3
+
+Ferraro, P. J., & Hanauer, M. M. (2014). Advances in measuring the environmental and social impacts of environmental programs. *Annual Review of Environment and Resources*, 39, 495–517. https://doi.org/10.1146/annurev-environ-101813-013230
 
 Flynn, D. F. B., Gogol-Prokurat, M., Nogeire, T., Molinari, N., Richers, B. T., Lin, B. B., et al. (2009). Loss of functional diversity under land use intensification across multiple taxa. *Ecology Letters*, 12, 22–33. https://doi.org/10.1111/j.1461-0248.2008.01255.x
 
+Geldmann, J., Manica, A., Burgess, N. D., Coad, L., & Balmford, A. (2019). A global-level assessment of the effectiveness of protected areas at resisting anthropogenic pressures. *Proceedings of the National Academy of Sciences USA*, 116, 23209–23215. https://doi.org/10.1073/pnas.1908221116
+
 Guillera-Arroita, G. (2017). Modelling of species distributions, range dynamics and communities under imperfect detection: advances, challenges and opportunities. *Ecography*, 40, 281–295. https://doi.org/10.1111/ecog.02445
+
+Hanson, J. O., Schuster, R., Strimas-Mackey, M., Morrell, N., Edwards, B. P. M., Arcese, P., et al. (2024). Systematic conservation prioritization with the prioritizr R package. *Conservation Biology*, 38, e14376. https://doi.org/10.1111/cobi.14376
 
 Hillebrand, H., Blasius, B., Borer, E. T., Chase, J. M., Downing, J. A., Eriksson, B. K., et al. (2018). Biodiversity change is uncoupled from species richness trends: consequences for conservation and monitoring. *Journal of Applied Ecology*, 55, 169–184. https://doi.org/10.1111/1365-2664.12959
 
@@ -329,6 +371,10 @@ Jetz, W., Thomas, G. H., Joy, J. B., Hartmann, K., & Mooers, A. O. (2012). The g
 Jetz, W., McGeoch, M. A., Guralnick, R., Ferrier, S., Beck, J., Costello, M. J., et al. (2019). Essential biodiversity variables for mapping and monitoring species populations. *Nature Ecology & Evolution*, 3, 539–551. https://doi.org/10.1038/s41559-019-0826-1
 
 Johnston, A., Hochachka, W. M., Strimas-Mackey, M. E., Ruiz Gutierrez, V., Robinson, O. J., Miller, E. T., et al. (2021). Analytical guidelines to increase the value of community science data: an example using eBird data to estimate species distributions. *Diversity and Distributions*, 27, 1265–1277. https://doi.org/10.1111/ddi.13271
+
+Joppa, L. N., & Pfaff, A. (2009). High and far: biases in the location of protected areas. *PLoS ONE*, 4, e8273. https://doi.org/10.1371/journal.pone.0008273
+
+Jung, M., Arnell, A., de Lamo, X., García-Rangel, S., Lewis, M., Mark, J., et al. (2021). Areas of global importance for conserving terrestrial biodiversity, carbon and water. *Nature Ecology & Evolution*, 5, 1499–1509. https://doi.org/10.1038/s41559-021-01528-7
 
 Kelling, S., Johnston, A., Bonn, A., Fink, D., Ruiz-Gutierrez, V., Bonney, R., et al. (2019). Using semistructured surveys to improve citizen science data for monitoring biodiversity. *BioScience*, 69, 170–179. https://doi.org/10.1093/biosci/biz010
 
@@ -348,6 +394,11 @@ MacKenzie, D. I., Nichols, J. D., Hines, J. E., Knutson, M. G., & Franklin, A. B
 
 Magurran, A. E., Dornelas, M., Moyes, F., Gotelli, N. J., & McGill, B. (2015). Rapid biotic homogenization of marine fish assemblages. *Nature Communications*, 6, 8405. https://doi.org/10.1038/ncomms9405
 
+Margules, C. R., & Pressey, R. L. (2000). Systematic conservation planning. *Nature*, 405, 243–253. https://doi.org/10.1038/35012251
+
+Maxwell, S. L., Cazalis, V., Dudley, N., Hoffmann, M., Rodrigues, A. S. L., Stolton, S., et al. (2020). Area-based conservation in the twenty-first century. *Nature*, 586, 217–227. https://doi.org/10.1038/s41586-020-2773-z
+
+
 McGill, B. J., Dornelas, M., Gotelli, N. J., & Magurran, A. E. (2015). Fifteen forms of biodiversity trend in the Anthropocene. *Trends in Ecology & Evolution*, 30, 104–113. https://doi.org/10.1016/j.tree.2014.11.006
 
 McKinney, M. L., & Lockwood, J. L. (1999). Biotic homogenization: a few winners replacing many losers in the next mass extinction. *Trends in Ecology & Evolution*, 14, 450–453. https://doi.org/10.1016/S0169-5347(99)01679-1
@@ -364,9 +415,9 @@ Newbold, T., Hudson, L. N., Arnell, A. P., Contu, S., De Palma, A., Ferrier, S.,
 
 Olden, J. D., & Rooney, T. P. (2006). On defining and quantifying biotic homogenization. *Global Ecology and Biogeography*, 15, 113–120. https://doi.org/10.1111/j.1466-822X.2006.00214.x
 
-Ouyang, Z., Zheng, H., Xiao, Y., Polasky, S., Liu, J., Xu, W., et al. (2016). Improvements in ecosystem services from investments in natural capital. *Science*, 352, 1455–1459. https://doi.org/10.1126/science.aaf2295
-
 Outhwaite, C. L., Gregory, R. D., Chandler, R. E., Collen, B., & Isaac, N. J. B. (2020). Complex long-term biodiversity change among invertebrates, bryophytes and lichens. *Nature Ecology & Evolution*, 4, 384–392. https://doi.org/10.1038/s41559-020-1111-z
+
+Ouyang, Z., Zheng, H., Xiao, Y., Polasky, S., Liu, J., Xu, W., et al. (2016). Improvements in ecosystem services from investments in natural capital. *Science*, 352, 1455–1459. https://doi.org/10.1126/science.aaf2295
 
 Petchey, O. L., & Gaston, K. J. (2006). Functional diversity: back to basics and looking forward. *Ecology Letters*, 9, 741–758. https://doi.org/10.1111/j.1461-0248.2006.00924.x
 
@@ -374,13 +425,15 @@ Pigot, A. L., Sheard, C., Miller, E. T., Bregman, T. P., Freeman, B. G., Roll, U
 
 Pimm, S. L., Jenkins, C. N., Abell, R., Brooks, T. M., Gittleman, J. L., Joppa, L. N., et al. (2014). The biodiversity of species and their rates of extinction, distribution, and protection. *Science*, 344, 1246752. https://doi.org/10.1126/science.1246752
 
+Pollock, L. J., Thuiller, W., & Jetz, W. (2017). Large conservation gains possible for global biodiversity facets. *Nature*, 546, 141–144. https://doi.org/10.1038/nature22368
+
+Rodrigues, A. S. L., Andelman, S. J., Bakarr, M. I., Boitani, L., Brooks, T. M., Cowling, R. M., et al. (2004). Effectiveness of the global protected area network in representing species diversity. *Nature*, 428, 640–643. https://doi.org/10.1038/nature02422
+
 Rosenberg, K. V., Dokter, A. M., Blancher, P. J., Sauer, J. R., Smith, A. C., Smith, P. A., et al. (2019). Decline of the North American avifauna. *Science*, 366, 120–124. https://doi.org/10.1126/science.aaw1313
 
 Rota, C. T., Fletcher, R. J. Jr., Dorazio, R. M., & Betts, M. G. (2009). Occupancy estimation and the closure assumption. *Journal of Applied Ecology*, 46, 1173–1181. https://doi.org/10.1111/j.1365-2664.2009.01734.x
 
 Santangeli, A., Rajasärkkä, A., & Lehikoinen, A. (2016). Effects of high latitude protected areas on bird communities under rapid climate change. *Global Change Biology*, 23, 2241–2249. https://doi.org/10.1111/gcb.13518
-
-Şekercioğlu, Ç. H. (2006). Increasing awareness of avian ecological function. *Trends in Ecology & Evolution*, 21, 464–471. https://doi.org/10.1016/j.tree.2006.05.007
 
 Si, X., Baselga, A., & Ding, P. (2015). Revealing beta-diversity patterns of breeding bird and lizard communities on inundated land-bridge islands by separating the turnover and nestedness components. *PLOS ONE*, 10, e0127692. https://doi.org/10.1371/journal.pone.0127692
 
@@ -404,11 +457,11 @@ Villéger, S., Mason, N. W. H., & Mouillot, D. (2008). New multidimensional func
 
 Violle, C., Navas, M.-L., Vile, D., Kazakou, E., Fortunel, C., Hummel, I., & Garnier, E. (2007). Let the concept of trait be functional! *Oikos*, 116, 882–892. https://doi.org/10.1111/j.0030-1299.2007.15559.x
 
+Watson, J. E. M., Dudley, N., Segan, D. B., & Hockings, M. (2014). The performance and potential of protected areas. *Nature*, 515, 67–73. https://doi.org/10.1038/nature13947
+
 Wilman, H., Belmaker, J., Simpson, J., de la Rosa, C., Rivadeneira, M. M., & Jetz, W. (2014). EltonTraits 1.0: species-level foraging attributes of the world's birds and mammals. *Ecology*, 95, 2027. https://doi.org/10.1890/13-1917.1
 
 Yang, J., & Huang, X. (2021). The 30 m annual land cover dataset and its dynamics in China from 1990 to 2019. *Earth System Science Data*, 13, 3907–3925. https://doi.org/10.5194/essd-13-3907-2021
-
----
 
 ## SUPPORTING INFORMATION
 
