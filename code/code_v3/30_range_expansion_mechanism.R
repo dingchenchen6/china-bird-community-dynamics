@@ -118,9 +118,8 @@ genv <- safe_read(v3_file("derived", paste0("grid_environment", GRID_TAG, "_v3")
 if (is.null(genv)) genv <- safe_read(v3_file("derived", "grid_environment_v3", "rds"))
 if (is.null(genv)) stop("[30] grid_environment not found.")
 idx <- match(sites, genv$grid_cell)
-lat <- if ("lat" %in% names(genv)) genv$lat[idx] else genv$centroid_lat[idx]
-lon <- if ("lon" %in% names(genv)) genv$lon[idx] else genv$centroid_lon[idx]
-elev <- if ("elevation_mean" %in% names(genv)) genv$elevation_mean[idx] else if ("elevation" %in% names(genv)) genv$elevation[idx] else genv$elev_mean[idx]
+lat <- genv$lat[idx]; lon <- genv$lon[idx]
+elev <- if ("elevation_mean" %in% names(genv)) genv$elevation_mean[idx] else genv$elevation[idx]
 bio1 <- if ("bio1" %in% names(genv)) genv$bio1[idx] else genv$BIO1[idx]
 
 wmean <- function(w, x) sum(w * x, na.rm = TRUE) / sum(w[!is.na(x)], na.rm = TRUE)
@@ -156,7 +155,9 @@ message("[30] 全国 CTI 轨迹: ", paste(sprintf("%.3f", cti_nat), collapse = "
 message("[30] >>> CTI 持续上升 = 群落热适应种占比上升 = 气候驱动的经典指纹。")
 
 # ── 7. 生境类群归因：谁贡献了每格物种数的增量 ───────────────────────
-tr_path <- paste0(v3_file("results", "table_species_trend_traits_", run_label), "_extended.csv")
+# 修复：原写法把 run_label 传成了 v3_file 的扩展名参数，拼出的路径不存在，
+# 只能靠下一行回退。Fixed: run_label was passed as v3_file's extension argument.
+tr_path <- paste0(v3_file("results", paste0("table_species_trend_traits_", run_label, "_extended")), ".csv")
 if (!file.exists(tr_path)) tr_path <- paste0(v3_file("results", paste0("table_species_trend_traits_", run_label)), ".csv")
 if (file.exists(tr_path)) {
   tr <- read_csv(tr_path, show_col_types = FALSE)

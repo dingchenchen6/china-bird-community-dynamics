@@ -77,9 +77,8 @@ message(sprintf("[33] 保护分层: %s",
         paste(names(table(cov$pa_stratum)), table(cov$pa_stratum), sep = "=", collapse = ", ")))
 
 # ── 1. 多维多样性的逐期轨迹 × 保护分层 ───────────────────────────────
-cm_path <- v3_file("results", paste0("table_community_metrics_with_cri_", run_ext))
-if (!file.exists(cm_path))
-  cm_path <- v3_file("results", paste0("table_community_metrics_with_cri_", run_label))
+cm_path <- paste0(v3_file("results", paste0("table_community_metrics_with_cri_", run_ext)), ".csv")
+if (!file.exists(cm_path)) cm_path <- res_path("table_community_metrics_with_cri")
 cm <- read_csv(cm_path, show_col_types = FALSE)
 
 traj <- cm |>
@@ -116,14 +115,27 @@ if (have_lmer) {
       inner_join(cov |> select(grid_cell, pa_frac), by = "grid_cell") |>
       mutate(period_num = as.integer(sub("P", "", period)),
              z = as.numeric(scale(value_mean)))
-    fit <- try(lmer(z ~ period_num * pa_frac + (1 | grid_cell), data = d), silent = TRUE)
+    # 必须用随机斜率 (period_num | grid_cell)：保护覆盖率是网格层常量，
+    # 若只给随机截距，每格 5 期会被当作对"斜率×保护"的独立信息，
+    # n 虚增、SE 被低估，p 值严重反保守（曾出现 t = -14.6 的假显著）。
+    # Random slopes are required: with only a random intercept the five periods
+    # per grid are treated as independent evidence about the slope-by-protection
+    # interaction, inflating significance.
+    fit <- try(lmer(z ~ period_num * pa_frac + (period_num | grid_cell), data = d),
+               silent = TRUE)
+    if (inherits(fit, "try-error"))   # 不收敛时退回随机截距，并标记
+      fit <- try(lmer(z ~ period_num * pa_frac + (1 | grid_cell), data = d), silent = TRUE)
     if (inherits(fit, "try-error")) return(NULL)
+    ranef_form <- if (grepl("period_num \\|", deparse(formula(fit))[1])) "random_slope" else "intercept_only"
     cf <- summary(fit)$coefficients
     r <- cf["period_num:pa_frac", ]
     data.frame(metric = m, interaction_estimate = r[1], se = r[2], t = r[3],
-               n_obs = nrow(d), stringsAsFactors = FALSE)
+               n_grid = length(unique(d$grid_cell)), n_obs = nrow(d),
+               ranef = ranef_form, stringsAsFactors = FALSE)
   }))
   int_res$p_approx <- 2 * pnorm(-abs(int_res$t))
+  message("[33] 注：有效样本量为网格数 n_grid，而非观测数 n_obs；")
+  message("[33]     报告效应量与原始轨迹差值，不要只报 p 值。")
   print(int_res, digits = 3)
   write_csv(int_res, res_path("table_pa_interaction_tests"))
   message("[33] >>> 交互项显著为正 = 保护区内该指标随时间的表现优于区外。")
@@ -154,9 +166,8 @@ sp_occ <- do.call(rbind, lapply(seq_len(np), function(t) {
 sp_occ$psi_diff <- sp_occ$mean_psi_inside - sp_occ$mean_psi_outside
 
 # 关联性状：栖息地宽度（低=特化种）
-tr_path <- v3_file("results", paste0("table_species_trend_traits_", run_ext))
-if (!file.exists(tr_path))
-  tr_path <- v3_file("results", paste0("table_species_trend_traits_", run_label))
+tr_path <- paste0(v3_file("results", paste0("table_species_trend_traits_", run_ext)), ".csv")
+if (!file.exists(tr_path)) tr_path <- res_path("table_species_trend_traits")
 if (file.exists(tr_path)) {
   tr <- read_csv(tr_path, show_col_types = FALSE)
   hb <- intersect(c("habitat_breadth", "Habitat.Breadth"), names(tr))[1]
@@ -292,19 +303,33 @@ if (!is.na(yr_col)) {
                  z = as.numeric(scale(value_mean)),
                  age_s = as.numeric(scale(protect_age)))
         if (nrow(d) < 50) return(NULL)
-        fit <- try(lme4::lmer(z ~ period_num * age_s + (1 | grid_cell), data = d), silent = TRUE)
+        # 同样需要随机斜率；否则剂量-反应的 p 值会被伪重复放大
+        fit <- try(lme4::lmer(z ~ period_num * age_s + (period_num | grid_cell), data = d),
+                   silent = TRUE)
+        if (inherits(fit, "try-error"))
+          fit <- try(lme4::lmer(z ~ period_num * age_s + (1 | grid_cell), data = d), silent = TRUE)
         if (inherits(fit, "try-error")) return(NULL)
         cf <- summary(fit)$coefficients
         r <- cf["period_num:age_s", ]
+        # 独立的效应量：逐格 Theil-Sen 斜率与保护年限的相关系数。
+        # 这是不依赖模型设定的稳健校验——若与回归系数方向不符，以本项为准。
+        # Model-free effect size: correlation between per-grid slope and age.
+        per_grid <- d |> group_by(grid_cell) |>
+          summarise(sl = if (sum(!is.na(value_mean)) >= 3)
+                           stats::coef(stats::lm(value_mean ~ period_num))[2] else NA_real_,
+                    age = first(protect_age), .groups = "drop") |>
+          filter(!is.na(sl))
+        rr <- suppressWarnings(stats::cor(per_grid$age, per_grid$sl,
+                                          use = "complete.obs", method = "pearson"))
         data.frame(metric = m, dose_response_estimate = r[1], se = r[2], t = r[3],
-                   n_grid = length(unique(d$grid_cell)), stringsAsFactors = FALSE)
+                   effect_size_r = rr, n_grid = nrow(per_grid), stringsAsFactors = FALSE)
       }))
     if (!is.null(dose)) {
       dose$p_approx <- 2 * pnorm(-abs(dose$t))
       print(dose, digits = 3)
       write_csv(dose, res_path("table_pa_age_dose_response"))
-      message("[33] >>> 功能指标的 dose_response_estimate 显著为正 = ")
-      message("[33]     保护年限越长，功能维度随时间的表现越好（剂量-反应证据）。")
+      message("[33] >>> 判读以 effect_size_r 为准（逐格斜率 vs 保护年限的相关）：")
+      message("[33]     |r| < 0.1 视为无实质剂量-反应，不论 p 值多小。")
     }
   }
   message("[33] 保护年限梯度分析已输出（对本数据比事件研究更稳健）")
