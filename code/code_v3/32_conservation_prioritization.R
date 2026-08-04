@@ -70,12 +70,22 @@ pa_frac <- if (file.exists(cov_path)) {
 
 # ── 2. 特征权重：物种数导向 vs 功能独特性导向 ───────────────────────
 # 功能独特性 = 该物种在性状空间中到其它物种的平均距离（越大越独特）
-tr_path <- v3_file("results", paste0("table_species_trend_traits_", run_label, "_extended"))
+tr_path <- paste0(v3_file("results", paste0("table_species_trend_traits_", run_label)), "_extended.csv")
 w_rich <- rep(1, ns)                                          # (A) 等权 = 物种数导向
 w_func <- rep(1, ns)
 if (file.exists(tr_path)) {
   tr <- read_csv(tr_path, show_col_types = FALSE)
-  tcols <- intersect(c("habitat_breadth", "diet_specialization", "migration_score"), names(tr))
+  # 优先使用 AVONET 形态性状空间（与稿件 §2.6 的功能多样性口径一致）；
+  # 缺失时退回生态属性评分，并在日志中标明，避免"功能空间"名实不符。
+  # Prefer the AVONET morphological space used elsewhere in the paper.
+  morph <- intersect(c("Beak.Length_Culmen", "Beak.Width", "Beak.Depth",
+                       "Wing.Length", "Tarsus.Length", "Tail.Length", "Mass",
+                       "beak_length_culmen", "wing_length", "tarsus_length", "mass"),
+                     names(tr))
+  tcols <- if (length(morph) >= 3) morph else
+    intersect(c("habitat_breadth", "diet_specialization", "migration_score"), names(tr))
+  message("[32] 功能独特性性状空间：", if (length(morph) >= 3)
+          paste0("AVONET 形态（", length(morph), " 项）") else "生态属性评分（形态性状缺失）")
   if (length(tcols) >= 2) {
     M <- tr[match(sp, tr$species), tcols, drop = FALSE] |> as.matrix()
     M <- scale(M)
@@ -88,7 +98,7 @@ if (file.exists(tr_path)) {
 }
 
 # (C) 同质化风险导向：功能体积下降越快的网格，保护价值越高
-trend_path <- v3_file("results", paste0("table_trend_summary_", run_label, "_extended"))
+trend_path <- paste0(v3_file("results", paste0("table_trend_summary_", run_label)), "_extended.csv")
 risk <- rep(1, ng)
 if (file.exists(trend_path)) {
   tt <- read_csv(trend_path, show_col_types = FALSE) |>
@@ -110,15 +120,9 @@ library(prioritizr)
 solve_plan <- function(feature_mat, budget_frac, label) {
   pu <- data.frame(id = seq_len(ng), cost = 1, locked_in = FALSE)
   n_sel <- floor(budget_frac * ng)
-  # prioritizr v8 的 data.frame 接口要求 rij 为长表（pu/species/amount），
-  # 不再是 rij_matrix 矩阵（2026-08-04 实测 8.1.0 的方法签名）。
-  rij_df <- data.frame(
-    pu      = rep(seq_len(ncol(feature_mat)), each = nrow(feature_mat)),
-    species = rep(seq_len(nrow(feature_mat)), times = ncol(feature_mat)),
-    amount  = as.vector(feature_mat))
   p <- problem(pu, features = data.frame(id = seq_len(nrow(feature_mat)),
                                          name = rownames(feature_mat)),
-               rij = rij_df, cost_column = "cost") |>
+               rij_matrix = feature_mat, cost_column = "cost") |>
     add_max_utility_objective(budget = n_sel) |>
     add_binary_decisions() |>
     add_default_solver(gap = 0.05, verbose = FALSE)
@@ -127,8 +131,25 @@ solve_plan <- function(feature_mat, budget_frac, label) {
              plan = label, budget = budget_frac, stringsAsFactors = FALSE)
 }
 
+# ⚠️ 方案 B 的构造已修正。原实现仅用物种层权重 w_func 加权：由于站点效用是
+#    200 个物种的加总，而 w_func 的变异系数仅约 0.15，加总后站点排序几乎不变，
+#    导致方案 B 与 A 的 Jaccard 高达 0.96 —— 那是方法学假象，不是生态结论。
+#    方案 C 之所以不同，是因为它用的是站点层权重(risk)，直接改变各网格价值。
+#    公平比较要求 B 也在站点层设定目标：这里用"站点功能独特性"——
+#    网格内物种的平均性状独特性（占域概率加权），再与物种层权重相乘。
+# Plan B rebuilt: species-level weights alone barely change site ranking
+# (CV of w_func ~= 0.15), which made B nearly identical to A by construction.
+# Plan C differed only because it used site-level weights. B now also carries a
+# site-level functional target so the three plans are structurally comparable.
+site_func <- as.numeric((w_func %*% feat) / pmax(colSums(feat), 1e-9))   # 站点平均功能独特性
+site_func <- as.numeric(scale(site_func)); site_func <- site_func - min(site_func) + 0.1
+message(sprintf("[32] 站点功能独特性层: 范围 %.2f–%.2f（CV %.3f）",
+                min(site_func), max(site_func), sd(site_func) / mean(site_func)))
+message(sprintf("[32] 物种层功能权重 w_func 的 CV = %.3f（若过小则单靠物种权重无法改变选址）",
+                sd(w_func) / mean(w_func)))
+
 feat_rich <- feat * w_rich; rownames(feat_rich) <- sp
-feat_func <- feat * w_func; rownames(feat_func) <- sp
+feat_func <- sweep(feat * w_func, 2, site_func, "*"); rownames(feat_func) <- sp
 feat_risk <- sweep(feat, 2, risk, "*"); rownames(feat_risk) <- sp
 
 sols <- do.call(rbind, lapply(BUDGETS, function(b) rbind(
