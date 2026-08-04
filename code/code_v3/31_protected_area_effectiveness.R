@@ -120,9 +120,61 @@ cov_tbl <- tibble(
   pa_frac_national = cover_frac(pa[which(pa$`级别` == "国家级"), ]),
   pa_frac_wetland  = cover_frac(pa[which(pa$`类型` %in% c("内陆湿地", "海洋海岸")), ]),
   pa_frac_forest   = cover_frac(pa[which(pa$`类型` == "森林生态"), ]))
+# 规范列名：下游脚本（33/34）以 pa_frac 为准，pa_frac_all 保留兼容旧结果
+cov_tbl$pa_frac <- cov_tbl$pa_frac_all
+
+# ── 1b. 网格的保护区设立年份（事件研究 / 动态 DiD 的处理时点）──────────
+# 逐网格取"与之相交的保护区中最早的设立年份"。
+#   pa_year_min       : 任何相交保护区的最早年份（哪怕只压到一角）
+#   pa_year_first_major: 仅计入贡献网格面积 >= MAJOR_FRAC 的保护区，
+#                        避免一小块老保护区的边角把处理时点错误地提前——
+#                        事件研究应以此列为准。
+# Earliest reserve establishment year per grid; the "major" variant ignores
+# slivers so the event-study treatment date is not set by a marginal overlap.
+MAJOR_FRAC <- 0.01
+message("[31] 计算网格保护区设立年份 ...")
+g_ea   <- project_china_albers(grid_sf)
+pa_ea  <- st_transform(pa, st_crs(g_ea))
+grid_a <- as.numeric(st_area(g_ea))
+hits   <- st_intersects(g_ea, pa_ea)          # 稀疏列表：每网格相交的保护区索引
+
+yr_min <- rep(NA_real_, nrow(grid_sf))
+yr_maj <- rep(NA_real_, nrow(grid_sf))
+n_pa   <- lengths(hits)
+for (i in seq_len(nrow(grid_sf))) {
+  idx <- hits[[i]]
+  if (!length(idx)) next
+  yrs <- pa_ea$year[idx]
+  if (all(is.na(yrs))) next
+  yr_min[i] <- suppressWarnings(min(yrs, na.rm = TRUE))
+  # 各相交保护区对该网格的面积贡献
+  inter <- suppressWarnings(
+    st_intersection(st_geometry(g_ea)[i], st_geometry(pa_ea)[idx]))
+  if (length(inter) == 0) next
+  fr <- as.numeric(st_area(inter)) / grid_a[i]
+  keep <- which(fr >= MAJOR_FRAC)
+  if (length(keep)) {
+    yk <- yrs[seq_along(fr)][keep]
+    if (any(!is.na(yk))) yr_maj[i] <- suppressWarnings(min(yk, na.rm = TRUE))
+  }
+}
+yr_min[!is.finite(yr_min)] <- NA_real_
+yr_maj[!is.finite(yr_maj)] <- NA_real_
+cov_tbl$n_pa_overlapping  <- n_pa
+cov_tbl$pa_year_min       <- yr_min
+cov_tbl$pa_year_first_major <- yr_maj
+# 事件研究可用的处理组：2000-2024 期间首次获得实质保护的网格
+cov_tbl$newly_protected_2000_2024 <-
+  !is.na(yr_maj) & yr_maj >= 2000 & yr_maj <= 2024
+
 write_csv(cov_tbl, paste0(v3_file("results", paste0("table_pa_grid_coverage_", run_label)), ".csv"))
 message(sprintf("[31] 网格平均保护区覆盖率 %.1f%%；覆盖率>10%% 的网格 %d 个",
                 100 * mean(cov_tbl$pa_frac_all), sum(cov_tbl$pa_frac_all > 0.10)))
+message(sprintf("[31] 有设立年份的网格 %d 个；2000-2024 期间新获实质保护 %d 个（事件研究处理组）",
+                sum(!is.na(cov_tbl$pa_year_first_major)),
+                sum(cov_tbl$newly_protected_2000_2024)))
+if (sum(cov_tbl$newly_protected_2000_2024) < 20)
+  message("[31] ⚠ 事件研究处理组样本偏少，动态 DiD 结果需谨慎解读")
 
 # ── 2. 组装分析数据：覆盖率 + 匹配协变量 + 多维趋势结果 ──────────────
 genv <- safe_read(v3_file("derived", paste0("grid_environment", GRID_TAG, "_v3"), "rds"))
