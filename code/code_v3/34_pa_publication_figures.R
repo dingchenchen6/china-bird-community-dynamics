@@ -93,15 +93,28 @@ if (!is.null(traj)) {
 # ── PA5. 空间 beta（同质化速率）内外对比 ─────────────────────────────
 bet <- read_if("table_pa_beta_contrast")
 if (!is.null(bet)) {
-  d <- bet |>
-    select(period, inside = spatial_beta_inside, outside = spatial_beta_outside,
-           sd_in = spatial_beta_inside_sd, sd_out = spatial_beta_outside_sd) |>
-    pivot_longer(c(inside, outside), names_to = "grp", values_to = "beta") |>
-    mutate(sd = ifelse(grp == "inside", sd_in, sd_out),
-           period_num = as.integer(sub("P", "", period)))
+  # 新版表用 bootstrap 95% 区间（*_lwr/_upr）；兼容旧版的 *_sd 列
+  has_ci <- all(c("spatial_beta_inside_lwr", "spatial_beta_outside_lwr") %in% names(bet))
+  d <- if (has_ci) {
+    bet |> select(period,
+                  inside = spatial_beta_inside, outside = spatial_beta_outside,
+                  in_l = spatial_beta_inside_lwr, in_u = spatial_beta_inside_upr,
+                  out_l = spatial_beta_outside_lwr, out_u = spatial_beta_outside_upr) |>
+      pivot_longer(c(inside, outside), names_to = "grp", values_to = "beta") |>
+      mutate(lwr = ifelse(grp == "inside", in_l, out_l),
+             upr = ifelse(grp == "inside", in_u, out_u),
+             period_num = as.integer(sub("P", "", period)))
+  } else {
+    bet |> select(period, inside = spatial_beta_inside, outside = spatial_beta_outside,
+                  sd_in = spatial_beta_inside_sd, sd_out = spatial_beta_outside_sd) |>
+      pivot_longer(c(inside, outside), names_to = "grp", values_to = "beta") |>
+      mutate(sd = ifelse(grp == "inside", sd_in, sd_out),
+             lwr = beta - sd, upr = beta + sd,
+             period_num = as.integer(sub("P", "", period)))
+  }
 
   p5 <- ggplot(d, aes(period_num, beta, colour = grp, fill = grp)) +
-    geom_ribbon(aes(ymin = beta - sd, ymax = beta + sd), alpha = 0.16, colour = NA) +
+    geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.16, colour = NA) +
     geom_line(linewidth = 0.7) + geom_point(size = 1.6) +
     scale_colour_manual(values = c(inside = COL_IN, outside = COL_OUT),
                         labels = c("保护地内", "保护地外"), name = NULL) +
@@ -110,11 +123,32 @@ if (!is.null(bet)) {
     scale_x_continuous(breaks = 1:5,
       labels = c("2000-04", "2005-09", "2010-14", "2015-19", "2020-24")) +
     labs(x = NULL, y = "格点间空间 beta 多样性",
-         subtitle = "下降即群落趋同（同质化）；斜率更陡的一组同质化更快") +
+         subtitle = if (has_ci) "阴影为 bootstrap 95% 区间；下降即群落趋同（同质化）"
+                    else "下降即群落趋同（同质化）；斜率更陡的一组同质化更快") +
     theme_nature_pub() +
     theme(legend.position = "top", axis.text.x = element_text(angle = 45, hjust = 1))
   save_nature(p5, paste0("fig_pa5_spatial_beta_", run_label), width_mm = 89, height_mm = 72)
   message("[34] PA5 空间 beta 对比图已输出")
+}
+
+# ── PA5b. 同质化「速率」的内外差异（bootstrap 区间）──────────────────
+rate <- read_if("table_pa_beta_rate")
+if (!is.null(rate)) {
+  d <- rate |>
+    mutate(grp = factor(group, levels = c("inside", "outside", "difference"),
+                        labels = c("保护地内", "保护地外", "差值（内 − 外）")),
+           sig = ifelse(group == "difference" & (lwr > 0 | upr < 0), "区间不含 0", "区间含 0"))
+  p5b <- ggplot(d, aes(slope, grp, colour = sig)) +
+    geom_vline(xintercept = 0, linetype = 2, colour = "grey55", linewidth = 0.3) +
+    geom_errorbarh(aes(xmin = lwr, xmax = upr), height = 0.16, linewidth = 0.5) +
+    geom_point(size = 2.2) +
+    scale_colour_manual(values = c("区间不含 0" = COL_IN, "区间含 0" = "grey60"), name = NULL) +
+    labs(x = "空间 beta 随时期的斜率（负值 = 群落趋同）", y = NULL,
+         subtitle = "误差棒为 bootstrap 95% 区间；差值区间不含 0 才可断言内外速率不同") +
+    theme_nature_pub() + theme(legend.position = "top")
+  save_nature(p5b, paste0("fig_pa5b_homogenization_rate_", run_label),
+              width_mm = 89, height_mm = 58)
+  message("[34] PA5b 同质化速率差异图已输出")
 }
 
 # ── PA6. 特化种 vs 泛化种的占域分化 ──────────────────────────────────
@@ -217,11 +251,8 @@ if (!is.null(genv) && !is.null(cov)) {
   # PA8：保护规划三方案对比（脚本 32 产出）
   sol <- read_if("table_priority_solutions")
   if (!is.null(sol)) {
-    # 32 产出为长表（grid_cell/selected/plan/budget）；主图取 GBF 30% 档，
-    # 0.17 档见 table_priority_solutions_*.csv（2026-08-04 适配修复）。
-    d <- sol |>
-      filter(budget == max(budget, na.rm = TRUE)) |>
-      mutate(scenario = plan) |>
+    sc_cols <- setdiff(names(sol), "grid_cell")
+    d <- sol |> pivot_longer(all_of(sc_cols), names_to = "scenario", values_to = "selected") |>
       filter(!is.na(selected)) |>
       left_join(gmap |> select(grid_cell, lon, lat), by = "grid_cell") |>
       mutate(selected = factor(ifelse(selected > 0, "选中", "未选中"),
@@ -233,7 +264,7 @@ if (!is.null(genv) && !is.null(cov)) {
                         na.value = "grey92", name = NULL) +
       coord_sf(xlim = c(73, 135), ylim = c(18, 54), expand = FALSE) +
       labs(x = NULL, y = NULL,
-           subtitle = "三套优先区方案（预算=GBF 30% 目标）；若空间重叠低，说明按物种数规划会错过阻止同质化的关键区") +
+           subtitle = "三套优先区方案；若空间重叠低，说明按物种数规划会错过阻止同质化的关键区") +
       theme_nature_map() + theme(legend.position = "top")
     save_nature(p8, paste0("fig_pa8_prioritization_", run_label), width_mm = 183, height_mm = 84)
     message("[34] PA8 保护规划方案图已输出")

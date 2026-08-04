@@ -199,26 +199,77 @@ spatial_beta <- function(mat) {                    # mat: species × sites（占
   d[den == 0] <- NA_real_
   mean(d[upper.tri(d)], na.rm = TRUE)
 }
-# 为控制格点数差异带来的偏倚，对两组做等样本量重抽样
-n_sub <- min(sum(in_pa), sum(out_pa), 120)
+# 不确定性：对网格做【有放回】bootstrap。
+#   原实现用等样本量【无放回】抽样，当保护组恰为 n_in 个网格、n_sub = n_in 时
+#   每次都抽到全部，方差恒为 0（首轮 spatial_beta_inside_sd 全为 0），
+#   导致内外差异无法做任何统计检验。有放回抽样才能给出真实抽样变异。
+# Bootstrap with replacement: the original equal-size sampling without
+# replacement degenerated when n_sub equalled the protected-group size,
+# yielding zero variance and no basis for inference.
+n_in <- sum(in_pa); n_out <- sum(out_pa)
+n_sub <- min(n_in, n_out, 120)
+N_BOOT <- 200; N_PERM <- 500
 set.seed(if (exists("SEED")) SEED else 20260728L)
+message(sprintf("[33] 空间 beta：bootstrap %d 次、置换检验 %d 次（每组抽 %d 格，有放回）",
+                N_BOOT, N_PERM, n_sub))
+
+idx_in <- which(in_pa); idx_out <- which(out_pa)
 beta_tbl <- do.call(rbind, lapply(seq_len(np), function(t) {
-  reps <- t(sapply(1:30, function(r) {
-    i_in  <- sample(which(in_pa),  n_sub)
-    i_out <- sample(which(out_pa), n_sub)
-    c(spatial_beta(psi_mean[, i_in,  t]), spatial_beta(psi_mean[, i_out, t]))
-  }))
-  data.frame(period = paste0("P", t), n_grid_each = n_sub,
-             spatial_beta_inside  = mean(reps[, 1], na.rm = TRUE),
-             spatial_beta_inside_sd = sd(reps[, 1], na.rm = TRUE),
-             spatial_beta_outside = mean(reps[, 2], na.rm = TRUE),
-             spatial_beta_outside_sd = sd(reps[, 2], na.rm = TRUE),
-             stringsAsFactors = FALSE)
+  M <- psi_mean[, , t]
+  # bootstrap：有放回抽样，给出各组的抽样分布
+  bs <- t(vapply(seq_len(N_BOOT), function(r) c(
+    spatial_beta(M[, sample(idx_in,  n_sub, replace = TRUE), drop = FALSE]),
+    spatial_beta(M[, sample(idx_out, n_sub, replace = TRUE), drop = FALSE])),
+    numeric(2)))
+  gap_bs <- bs[, 1] - bs[, 2]
+  # 置换检验：打乱保护标签，检验观测到的内外差异是否可由随机分组产生
+  pooled <- c(idx_in, idx_out)
+  obs_gap <- spatial_beta(M[, idx_in, drop = FALSE]) -
+             spatial_beta(M[, idx_out, drop = FALSE])
+  perm <- vapply(seq_len(N_PERM), function(r) {
+    s <- sample(pooled)
+    spatial_beta(M[, s[seq_len(n_sub)], drop = FALSE]) -
+      spatial_beta(M[, s[(n_sub + 1):(2 * n_sub)], drop = FALSE])
+  }, numeric(1))
+  data.frame(
+    period = paste0("P", t), n_grid_inside = n_in, n_grid_outside = n_out,
+    n_sub = n_sub,
+    spatial_beta_inside  = mean(bs[, 1], na.rm = TRUE),
+    spatial_beta_inside_lwr = unname(quantile(bs[, 1], .025, na.rm = TRUE)),
+    spatial_beta_inside_upr = unname(quantile(bs[, 1], .975, na.rm = TRUE)),
+    spatial_beta_outside = mean(bs[, 2], na.rm = TRUE),
+    spatial_beta_outside_lwr = unname(quantile(bs[, 2], .025, na.rm = TRUE)),
+    spatial_beta_outside_upr = unname(quantile(bs[, 2], .975, na.rm = TRUE)),
+    beta_gap_obs = obs_gap,
+    beta_gap_lwr = unname(quantile(gap_bs, .025, na.rm = TRUE)),
+    beta_gap_upr = unname(quantile(gap_bs, .975, na.rm = TRUE)),
+    perm_p = mean(abs(perm) >= abs(obs_gap), na.rm = TRUE),
+    stringsAsFactors = FALSE)
 }))
-beta_tbl$beta_gap <- beta_tbl$spatial_beta_inside - beta_tbl$spatial_beta_outside
-print(beta_tbl, digits = 4)
+print(beta_tbl[, c("period", "spatial_beta_inside", "spatial_beta_outside",
+                   "beta_gap_obs", "beta_gap_lwr", "beta_gap_upr", "perm_p")], digits = 4)
 write_csv(beta_tbl, res_path("table_pa_beta_contrast"))
-message("[33] >>> 若区外空间 beta 下降更快（同质化更快），保护区即起到了抑制趋同的作用。")
+message("[33] >>> 判读：beta_gap 的 95% bootstrap 区间是否含 0，配合 perm_p；")
+message("[33]     仅当区间不含 0 且 perm_p < 0.05 时，才可称保护区抑制了群落趋同。")
+
+# 同质化【速率】的内外对比：对各组 bootstrap 样本拟合 beta~period 斜率
+rate <- do.call(rbind, lapply(seq_len(N_BOOT), function(r) {
+  si <- vapply(seq_len(np), function(t)
+    spatial_beta(psi_mean[, sample(idx_in, n_sub, replace = TRUE), t, drop = FALSE]), numeric(1))
+  so <- vapply(seq_len(np), function(t)
+    spatial_beta(psi_mean[, sample(idx_out, n_sub, replace = TRUE), t, drop = FALSE]), numeric(1))
+  x <- seq_len(np)
+  c(stats::coef(stats::lm(si ~ x))[2], stats::coef(stats::lm(so ~ x))[2])
+}))
+rate_tbl <- data.frame(
+  group = c("inside", "outside", "difference"),
+  slope = c(mean(rate[, 1]), mean(rate[, 2]), mean(rate[, 1] - rate[, 2])),
+  lwr = c(quantile(rate[, 1], .025), quantile(rate[, 2], .025), quantile(rate[, 1] - rate[, 2], .025)),
+  upr = c(quantile(rate[, 1], .975), quantile(rate[, 2], .975), quantile(rate[, 1] - rate[, 2], .975)),
+  stringsAsFactors = FALSE)
+print(rate_tbl, digits = 4, row.names = FALSE)
+write_csv(rate_tbl, res_path("table_pa_beta_rate"))
+message("[33] >>> 同质化速率差：difference 的区间不含 0 才可断言内外速率不同。")
 
 # ── 5. 事件研究：以保护区设立年份为事件时间的动态 DiD ─────────────────
 # 优先用 pa_year_first_major：仅计入实质覆盖(≥1%网格面积)的保护区，
