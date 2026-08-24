@@ -59,7 +59,9 @@ PA_HIGH   <- 0.30   # 高保护阈值（覆盖率≥30%，对齐昆明-蒙特利
 PA_LOW    <- 0.05   # 低保护阈值
 log_time("33", "PA inside-outside spatiotemporal contrast")
 
-res_path <- function(stem) paste0(v3_file("results", paste0(stem, "_", run_label)), ".csv")
+# v3_file() 默认已追加 ".csv"，此处不可再拼一次，否则产出 *.csv.csv
+# v3_file() already appends ".csv"; appending again yields *.csv.csv
+res_path <- function(stem) v3_file("results", paste0(stem, "_", run_label))
 
 # ── 0. 载入保护区覆盖率（脚本 31 产出）───────────────────────────────
 cov_path <- res_path("table_pa_grid_coverage")
@@ -254,10 +256,11 @@ message("[33]     仅当区间不含 0 且 perm_p < 0.05 时，才可称保护�
 
 # 同质化【速率】的内外对比：对各组 bootstrap 样本拟合 beta~period 斜率
 rate <- do.call(rbind, lapply(seq_len(N_BOOT), function(r) {
+  # FIX: 单期取值不可带 drop=FALSE（否则传入 3D 数组，crossprod 报维度不符）
   si <- vapply(seq_len(np), function(t)
-    spatial_beta(psi_mean[, sample(idx_in, n_sub, replace = TRUE), t, drop = FALSE]), numeric(1))
+    spatial_beta(psi_mean[, sample(idx_in, n_sub, replace = TRUE), t]), numeric(1))
   so <- vapply(seq_len(np), function(t)
-    spatial_beta(psi_mean[, sample(idx_out, n_sub, replace = TRUE), t, drop = FALSE]), numeric(1))
+    spatial_beta(psi_mean[, sample(idx_out, n_sub, replace = TRUE), t]), numeric(1))
   x <- seq_len(np)
   c(stats::coef(stats::lm(si ~ x))[2], stats::coef(stats::lm(so ~ x))[2])
 }))

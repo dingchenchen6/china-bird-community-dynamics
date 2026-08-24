@@ -48,7 +48,8 @@ is_pilot  <- Sys.getenv("V3_PILOT", "0") == "1"
 run_label <- if (is_pilot) PILOT_LABEL else RUN_LABEL
 log_time("34", "Publication figures for PA analyses")
 
-res_path <- function(stem) paste0(v3_file("results", paste0(stem, "_", run_label)), ".csv")
+# v3_file() 默认已追加 ".csv"，不可再拼一次（否则读取 *.csv.csv 会失败）
+res_path <- function(stem) v3_file("results", paste0(stem, "_", run_label))
 read_if <- function(stem) { p <- res_path(stem); if (file.exists(p)) read_csv(p, show_col_types = FALSE) else NULL }
 
 # 配色：保护地内=蓝，外=橙（与全篇一致，色盲友好）
@@ -251,8 +252,10 @@ if (!is.null(genv) && !is.null(cov)) {
   # PA8：保护规划三方案对比（脚本 32 产出）
   sol <- read_if("table_priority_solutions")
   if (!is.null(sol)) {
-    sc_cols <- setdiff(names(sol), "grid_cell")
-    d <- sol |> pivot_longer(all_of(sc_cols), names_to = "scenario", values_to = "selected") |>
+    # FIX: 32 现产出长表（grid_cell, selected, plan, budget），直接构造 scenario，
+    #      不再假定宽表后 pivot_longer。
+    d <- sol |>
+      mutate(scenario = paste0(plan, " @", budget)) |>
       filter(!is.na(selected)) |>
       left_join(gmap |> select(grid_cell, lon, lat), by = "grid_cell") |>
       mutate(selected = factor(ifelse(selected > 0, "选中", "未选中"),

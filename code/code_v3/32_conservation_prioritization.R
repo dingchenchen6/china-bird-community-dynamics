@@ -120,9 +120,14 @@ library(prioritizr)
 solve_plan <- function(feature_mat, budget_frac, label) {
   pu <- data.frame(id = seq_len(ng), cost = 1, locked_in = FALSE)
   n_sel <- floor(budget_frac * ng)
+  # FIX: prioritizr 8.x 的 data.frame 接口改用长表 rij(pu/species/amount)，
+  #      不再接受 rij_matrix；此处等值转换，目标函数与预算不变。
+  rij <- do.call(rbind, lapply(seq_len(nrow(feature_mat)), function(i)
+    data.frame(pu = seq_len(ncol(feature_mat)), species = i,
+               amount = as.numeric(feature_mat[i, ]))))
   p <- problem(pu, features = data.frame(id = seq_len(nrow(feature_mat)),
                                          name = rownames(feature_mat)),
-               rij_matrix = feature_mat, cost_column = "cost") |>
+               rij = rij, cost_column = "cost") |>
     add_max_utility_objective(budget = n_sel) |>
     add_binary_decisions() |>
     add_default_solver(gap = 0.05, verbose = FALSE)

@@ -31,3 +31,6 @@ Thumbs.db
 push_batches.sh
 .pushwork/
 push_figs.sh
+
+# 本地符号链接（指向 code/code_v3）
+/code_v3
