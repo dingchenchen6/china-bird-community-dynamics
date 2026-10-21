@@ -30,7 +30,7 @@
 ## 2. 环境与前置（与第一轮相同）
 
 ```bash
-ssh dingchenchen@162.105.149.23      # 密码由用户单独提供
+ssh dingchenchen@<SERVER_IP>      # 密码由用户单独提供
 cd ~/Documents/New\ project/bird_dynamic_occupancy_analysis
 export V3_CODE_DIR="$PWD/code_v3"
 export V3_RUN_LABEL="v3_full_200sp_ar1_spatial"

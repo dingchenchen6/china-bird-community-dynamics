@@ -8,7 +8,7 @@ This document explains what is needed to re-run the analysis end to end, in what
 
 | Included | Excluded (and why) |
 |---|---|
-| All R pipeline code (`code/`) | Raw occurrence records — subject to provider terms (CBRC, GBIF, eBird) |
+| All R pipeline code (`code/`) | Raw occurrence records — subject to provider terms (CBRC, eBird) |
 | Derived result tables (`results/`, CSV) | Posterior sample arrays and model fit objects (`*.rds`, tens of GB) |
 | Manuscripts and reports | Environmental raster inputs (WorldClim, CLCD, HFI; obtain from source) |
 | Main-line figures (`figures/`) | Log files and scratch output |
@@ -41,7 +41,7 @@ install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOpt
 | Input | Source | Used by |
 |---|---|---|
 | China Birdwatching Records Center records | https://www.birdreport.cn (terms apply) | `01_merge_birdwatch_ebird.R` |
-| eBird / GBIF China records | https://ebird.org/data/download, https://www.gbif.org | `01_merge_birdwatch_ebird.R` |
+| eBird China records | https://ebird.org/data/download | `01_merge_birdwatch_ebird.R` |
 | WorldClim 2.1 bioclimatic variables | https://worldclim.org | `03_prepare_environment.R` |
 | CLCD China land cover (30 m) | Yang & Huang 2021, ESSD | `03d_prepare_landuse_change.R` |
 | Human Footprint (annual, 2000–2018) | Mu et al. 2022, Sci Data | `03e_prepare_hfi_change.R` |
@@ -76,7 +76,7 @@ Run in this order. Stages 04–05 are the expensive ones.
 
 | # | Script | Purpose | Typical cost |
 |---|---|---|---|
-| 01 | `01_merge_birdwatch_ebird.R` | Merge CBRC + GBIF/eBird, source-aware deduplication | ~1 h |
+| 01 | `01_merge_birdwatch_ebird.R` | Merge CBRC + eBird, source-aware deduplication | ~1 h |
 | 02 | `02_build_survey_history.R` | Build detection/non-detection survey histories on the 100-km grid × 5 periods | ~1 h |
 | 03 | `03_prepare_environment.R`, `03b`–`03e` | Environmental, trait, climate-change, land-use and human-pressure covariates | ~2 h |
 | 04 | `04_run_stMsPGOcc_main.R` | **Primary model** — 200 species, spatial NNGP + AR(1), 4 chains | days, high RAM |

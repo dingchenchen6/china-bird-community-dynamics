@@ -15,8 +15,19 @@ Code, result tables, figures and manuscripts for a national-scale analysis of Ch
 | Primary model | `spOccupancy::stMsPGOcc` — 200 species, spatial NNGP + AR(1) |
 | Breadth extension | `spOccupancy::tMsPGOcc` — 500 species, temporal (non-spatial), 10 latent factors |
 | MCMC | 4 chains, 5,000 burn-in, thin 2, 1,250 post-burn-in draws per chain |
-| Data sources | China Birdwatching Records Center + curated GBIF / eBird China records |
+| Data sources | China Birdwatching Records Center + eBird China records (GBIF not used) |
 | Traits & phylogeny | AVONET, EltonTraits, IUCN-derived habitat breadth, global bird tree |
+
+## 2026-10 update
+
+| Item | Location |
+|---|---|
+| Public research overview (web) | <https://dingchenchen6.github.io/china-bird-community-dynamics-overview/> · offline copy [`overview/Research_Overview.html`](overview/Research_Overview.html) |
+| Academic talk (Chinese, PPTX + PDF) | [`presentation/`](presentation/) |
+| Rerun code bundle (code_v3 + patches) | [`code/code_v4_refit/`](code/code_v4_refit/) — start with [`README_RERUN.md`](code/code_v4_refit/README_RERUN.md) and `run_refit.sh` |
+| Stage-0 rebuilt grid environment + QA | [`results/refit_v4_stage0/`](results/refit_v4_stage0/) |
+
+> ⚠️ **Covariate alignment defect (found 2026-10-20).** The v1 grid-environment extraction keyed polygon row numbers as `grid_cell`, so 769 cells lacked values and the 478 cells that had values carried another cell's covariates. Longitude, latitude and HFI were unaffected. Results that depend on these covariates (detection/occupancy covariate effects, CTI, elevational centroid, protected-area matching and driver analyses) are being refitted with the stage-0 table (1,247 × 52, no missing values). Treat the corresponding tables in `results/` as provisional until the refit lands.
 
 ## Where to start
 
@@ -74,7 +85,7 @@ Protected-area boundaries come from China Nature Reserve Specimen Resource Shari
 
 ## Data availability
 
-Raw occurrence records are **not** included here and are subject to source-provider terms (China Birdwatching Records Center, GBIF, eBird). Large intermediate objects (posterior samples, model fits; tens of GB) are also excluded — see `.gitignore`. This repository contains the code, derived result tables, figures and manuscripts needed to follow and audit the analysis. Derived data will be archived with a DOI on publication.
+Raw occurrence records are **not** included here and are subject to source-provider terms (China Birdwatching Records Center, eBird). Large intermediate objects (posterior samples, model fits; tens of GB) are also excluded — see `.gitignore`. This repository contains the code, derived result tables, figures and manuscripts needed to follow and audit the analysis. Derived data will be archived with a DOI on publication.
 
 ## Reproducing
 

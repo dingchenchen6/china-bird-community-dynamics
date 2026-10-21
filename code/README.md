@@ -14,7 +14,7 @@ R pipeline for the analysis. `code_v3/` is the **current main pipeline**; `code_
 | Stage | Script | Purpose |
 |---|---|---|
 | 00 | `00_config.R` | Global configuration, run labels, MCMC settings, seeds |
-| 01 | `01_merge_birdwatch_ebird.R` | Merge CBRC + GBIF/eBird records, source-aware deduplication |
+| 01 | `01_merge_birdwatch_ebird.R` | Merge CBRC + eBird records, source-aware deduplication |
 | 02 | `02_build_survey_history.R` | Detection/non-detection survey histories (grid × period × repeat) |
 | 03 | `03_prepare_environment.R` | Grid environmental covariates (climate, topography, land cover, HFI) |
 | 03b–03e | `03b_extend_traits.R`, `03c_prepare_climate_change.R`, `03d_prepare_landuse_change.R`, `03e_prepare_hfi_change.R` | Traits and change-covariates |

@@ -20,7 +20,7 @@
 
 | 项 | 值 |
 |---|---|
-| 主机 | `162.105.149.23` |
+| 主机 | `<SERVER_IP>` |
 | 用户 | `dingchenchen` |
 | 密码 | **由用户单独提供**（未写入本仓库） |
 | 项目目录 | `~/Documents/New project/bird_dynamic_occupancy_analysis` |
@@ -30,7 +30,7 @@
 登录：
 
 ```bash
-ssh dingchenchen@162.105.149.23
+ssh dingchenchen@<SERVER_IP>
 ```
 
 ---
@@ -104,7 +104,7 @@ Rscript -e 'install.packages(c("sf","dplyr","readr","tidyr","matrixStats","Match
 ```bash
 rsync -avz --include='*.R' --exclude='*' \
   "$HOME/Documents/New project/bird_dynamic_occupancy_analysis/code_v3/" \
-  dingchenchen@162.105.149.23:"~/Documents/New project/bird_dynamic_occupancy_analysis/code_v3/"
+  dingchenchen@<SERVER_IP>:"~/Documents/New project/bird_dynamic_occupancy_analysis/code_v3/"
 ```
 
 或直接在服务器上从 GitHub 拉取：
@@ -216,7 +216,7 @@ rsync -avz --include='table_range_*' --include='table_colonization_*' \
   --include='table_centroid_*' --include='table_cti_*' --include='table_guild_*' \
   --include='table_pa_*' --include='table_conservation_gap_*' --include='table_priority_*' \
   --exclude='*' \
-  dingchenchen@162.105.149.23:"~/Documents/New project/bird_dynamic_occupancy_analysis/results_v3/" \
+  dingchenchen@<SERVER_IP>:"~/Documents/New project/bird_dynamic_occupancy_analysis/results_v3/" \
   "$HOME/Desktop/analysis_results/"
 ```
 
